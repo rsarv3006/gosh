@@ -78,7 +78,61 @@ gosh> pwd
 gosh> name := "gosh"
 gosh> fmt.Printf("Welcome to %s\n", name)
 Welcome to gosh
+
+# Configure your shell with config.go
+gosh> hello("user")
+Hello user! Welcome to gosh with config support!
+gosh> info()
+Config loaded successfully!
+User: rjs
 ```
+
+### Configuration - config.go
+
+gosh supports a `config.go` file for shell customization. Create a regular Go file at:
+
+1. `./config.go` (current directory, takes precedence)
+2. `~/.config/gosh/config.go` (home directory, fallback)
+
+```go
+// config.go
+package main
+
+import (
+    "fmt"
+    "os"
+)
+
+// Runs on shell startup
+func init() {
+    fmt.Println("Loading custom config...")
+    os.Setenv("EDITOR", "vim")
+}
+
+// Functions persist throughout the shell session
+func hello(name string) {
+    fmt.Printf("Hello %s! Welcome to gosh!\n", name)
+}
+
+func info() {
+    fmt.Printf("Config loaded successfully!\n")
+    fmt.Printf("User: %s\n", os.Getenv("GOSH_USER"))
+}
+
+// Custom prompt example (when implemented)
+func CustomPrompt() string {
+    return fmt.Sprintf("gosh[%s]$ ", 
+        strings.TrimPrefix(os.Getenv("PWD"), os.Getenv("HOME")))
+}
+```
+
+**Features:**
+- ✅ Full Go syntax with IDE support (LSP, treesitter, autocomplete)
+- ✅ Functions and variables persist in shell REPL
+- ✅ Environment variables set during startup
+- ✅ Common packages (fmt, os, strings, etc.) already imported
+- ✅ Additional imports handled automatically
+- ✅ Use `init()` for startup configuration
 
 ## Architecture
 
@@ -219,7 +273,7 @@ go build
 - [ ] Command history navigation (up/down arrows)
 - [ ] Tab completion for commands and file paths
 - [ ] Better error messages with line numbers
-- [ ] Config file support (.goshrc)
+- [x] Config file support (config.go) ✅
 - [ ] Pipe support (`ls | grep foo`)
 - [ ] Background jobs (`long_command &`)
 
@@ -240,6 +294,7 @@ go build
 - [ ] Want to use it instead of zsh
 - [ ] Tab completion works well enough
 - [ ] Command history doesn't suck
+- [x] Configurable with Go code ✅
 - [ ] Rarely have to drop back to another shell
 - [ ] Feels snappy and responsive
 

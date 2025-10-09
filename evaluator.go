@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 
@@ -20,6 +21,8 @@ type GoEvaluator struct {
 	stderrPipe  *os.File
 	originalOut *os.File
 	originalErr *os.File
+	state       *ShellState
+	spawner     *ProcessSpawner
 }
 
 func NewGoEvaluator() *GoEvaluator {
@@ -50,6 +53,84 @@ import (
 		originalOut: os.Stdout,
 		originalErr: os.Stderr,
 	}
+}
+
+func (g *GoEvaluator) SetupWithShell(state *ShellState, spawner *ProcessSpawner) {
+	g.state = state
+	g.spawner = spawner
+	
+	// For now, we'll keep it simple and not expose shell APIs directly
+	// Can extend this later with safe wrapper functions
+}
+
+func (g *GoEvaluator) stripImports(code string) string {
+	lines := strings.Split(code, "\n")
+	var result []string
+	inImport := false
+	
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		
+		if strings.HasPrefix(trimmed, "import ") {
+			// Skip single-line import
+			if strings.Contains(trimmed, "(") && !strings.Contains(trimmed, ")") {
+				// Start of multi-line import
+				inImport = true
+				continue
+			} else {
+				// Single line import - skip it
+				continue
+			}
+		} else if strings.HasPrefix(trimmed, "(") && !inImport {
+			// Start of multi-line import block
+			inImport = true
+			continue
+		} else if trimmed == ")" && inImport {
+			// End of multi-line import block
+			inImport = false
+			continue
+		} else if inImport {
+			// Skip lines inside import block
+			continue
+		}
+		
+		result = append(result, line)
+	}
+	
+	return strings.Join(result, "\n")
+}
+
+func (g *GoEvaluator) LoadConfig() error {
+	// Look for config.go in current directory first
+	configPath := "config.go"
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		// Try home directory
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return nil // No home dir, skip config
+		}
+		configPath = filepath.Join(homeDir, ".config", "gosh", "config.go")
+		if _, err := os.Stat(configPath); os.IsNotExist(err) {
+			return nil // No config file found
+		}
+	}
+
+	// Read config file
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		return fmt.Errorf("error reading config.go: %w", err)
+	}
+
+	// Strip import statements since common packages are already pre-imported
+	configCode := g.stripImports(string(content))
+
+	// Evaluate config code
+	if _, err := g.interp.Eval(configCode); err != nil {
+		return fmt.Errorf("error evaluating config.go: %w", err)
+	}
+
+	fmt.Printf("Loaded config from %s\n", configPath)
+	return nil
 }
 
 func (g *GoEvaluator) Eval(code string) ExecutionResult {

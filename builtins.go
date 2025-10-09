@@ -136,6 +136,13 @@ func (b *BuiltinHandler) help(args []string) ExecutionResult {
 				"  pwd               Print current working directory\n" +
 				"  exit [CODE]        Exit shell with optional exit code\n" +
 				"  help [COMMAND]    Show help for COMMAND, or this general help\n\n" +
+				"CONFIGURATION:\n" +
+				"  config.go          Go configuration file executed on startup\n" +
+				"    - Checked in current directory first\n" +
+				"    - Falls back to ~/.config/gosh/config.go\n" +
+				"    - Full Go syntax with IDE support (LSP, treesitter)\n" +
+				"    - Define functions, set environment, import packages\n" +
+				"    - Functions persist and are available in the shell\n\n" +
 				"GO CODE:\n" +
 				"  Write Go code directly:\n" +
 				"    x := 42\n" +
@@ -220,6 +227,55 @@ func (b *BuiltinHandler) help(args []string) ExecutionResult {
 		}
 	}
 	
+	// Check for config help
+	if command == "config" || command == "config.go" {
+		return ExecutionResult{
+			Output: "Configuration - config.go\n\n" +
+				"USAGE:\n" +
+				"    Create a config.go file in current directory or ~/.config/gosh/\n\n" +
+				"DESCRIPTION:\n" +
+				"    config.go is a regular Go file executed when gosh starts.\n" +
+				"    It provides full Go syntax with IDE support (LSP, treesitter, autocomplete).\n" +
+				"    Functions and variables defined in config.go persist and are available\n" +
+				"    throughout the shell session.\n\n" +
+				"FILE LOCATIONS:\n" +
+				"    1. ./config.go                    (current directory, takes precedence)\n" +
+				"    2. ~/.config/gosh/config.go      (home directory, fallback)\n\n" +
+				"EXAMPLE config.go:\n" +
+				"    package main\n\n" +
+				"    import (\n" +
+				"        \"fmt\"\n" +
+				"        \"os\"\n" +
+				"    )\n\n" +
+				"    // Runs on shell startup\n" +
+				"    func init() {\n" +
+				"        fmt.Println(\"Loading custom config...\")\n" +
+				"        os.Setenv(\"EDITOR\", \"vim\")\n" +
+				"    }\n\n" +
+				"    // Available throughout the shell session\n" +
+				"    func hello(name string) {\n" +
+				"        fmt.Printf(\"Hello %s!\\n\", name)\n" +
+				"    }\n\n" +
+				"    // Custom prompt example (when implemented)\n" +
+				"    func CustomPrompt() string {\n" +
+				"        return fmt.Sprintf(\"gosh[%s]$ \", \n" +
+				"            strings.TrimPrefix(os.Getenv(\"PWD\"), os.Getenv(\"HOME\")))\n" +
+				"    }\n\n" +
+				"FEATURES:\n" +
+				"    • Full Go syntax support\n" +
+				"    • IDE editing with LSP and syntax highlighting\n" +
+				"    • Pre-imported packages available (fmt, os, strings, etc.)\n" +
+				"    • Additional imports handled automatically\n" +
+				"    • Functions persist in shell REPL\n" +
+				"    • Environment variables set during startup\n\n" +
+				"NOTES:\n" +
+				"    • Common packages (fmt, os, strings, etc.) are already imported\n" +
+				"    • Additional imports are stripped from config.go before evaluation\n" +
+				"    • Use init() for startup configuration",
+			ExitCode: 0, Error: nil,
+		}
+	}
+
 	// Check for Go features
 	if command == "substitution" || command == "command" || command == "go" || command == "golang" || command == "yaegi" {
 		if command == "substitution" || command == "command" {
