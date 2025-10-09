@@ -41,6 +41,12 @@ import (
 }
 
 func (g *GoEvaluator) Eval(code string) ExecutionResult {
+	// Check if this is a simple assignment - don't print result
+	isAssignment := strings.Contains(strings.TrimSpace(code), ":=") ||
+		(strings.Contains(code, "=") && !strings.Contains(code, "==") &&
+			!strings.Contains(code, "!=") && !strings.Contains(code, "<=") &&
+			!strings.Contains(code, ">="))
+
 	// Capture stdout
 	oldStdout := os.Stdout
 	oldStderr := os.Stderr
@@ -62,17 +68,20 @@ func (g *GoEvaluator) Eval(code string) ExecutionResult {
 	output := buf.String()
 
 	// If there's a result value and no explicit output, print it
-	if err == nil && result.IsValid() && output == "" {
-		// Only print non-nil results
+	// But skip assignments and if we already printed to stdout
+	if err == nil && result.IsValid() && !isAssignment {
 		// Check if it's nillable before calling IsNil
+		shouldPrint := false
 		if result.Kind() == reflect.Ptr || result.Kind() == reflect.Interface ||
 			result.Kind() == reflect.Slice || result.Kind() == reflect.Map ||
 			result.Kind() == reflect.Chan || result.Kind() == reflect.Func {
-			if !result.IsNil() {
-				output = formatResult(result)
-			}
+			shouldPrint = !result.IsNil()
 		} else {
-			// For non-nillable types, just format them
+			shouldPrint = true
+		}
+
+		// Only show result if we didn't already print output
+		if shouldPrint && output == "" {
 			output = formatResult(result)
 		}
 	}
