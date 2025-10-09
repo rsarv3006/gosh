@@ -76,8 +76,10 @@ func (r *Router) looksLikeGo(input string) bool {
 
 	// Common Go functions
 	goFunctions := []string{
-		"fmt.Print", "fmt.Sprint", "len(", "cap(", "make(",
+		"fmt.Print", "fmt.Sprint", "fmt.Fprint",
+		"len(", "cap(", "make(",
 		"append(", "copy(", "delete(", "panic(", "recover(",
+		"println(", "print(",
 	}
 
 	for _, fn := range goFunctions {
@@ -91,24 +93,15 @@ func (r *Router) looksLikeGo(input string) bool {
 		return true
 	}
 
-	// Single word with no special shell chars - could be a variable reference
-	// But need to distinguish from commands
+	// Single word with no special shell chars - could be a variable reference OR command
+	// We'll try as Go first, and fallback to command if undefined
 	if !strings.ContainsAny(input, " \t/.-") {
-		// Single identifier - try as Go variable if it's not a known command
-		// This handles typos by letting them fail as commands
+		// If it's in PATH, definitely a command
 		if _, found := FindInPath(input); found {
-			return false // It's a command
+			return false
 		}
-		// Check if it contains only valid Go identifier characters
-		// If it looks like a filename or typo, let it fail as a command
-		hasValidGoChars := true
-		for _, ch := range input {
-			if !unicode.IsLetter(ch) && !unicode.IsDigit(ch) && ch != '_' {
-				hasValidGoChars = false
-				break
-			}
-		}
-		return hasValidGoChars
+		// Otherwise treat as potential Go variable (will fallback if undefined)
+		return true
 	}
 
 	return false
