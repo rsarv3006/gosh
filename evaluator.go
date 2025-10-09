@@ -90,18 +90,41 @@ func (g *GoEvaluator) Eval(code string) ExecutionResult {
 	// Determine if we should show the result value
 	// Show result if: no error, valid result, not an assignment, not a print, and NO stdout output
 	if err == nil && result.IsValid() && !isAssignment && !isPrintStatement && len(capturedOutput) == 0 {
-		// Check if it's nillable before calling IsNil
-		shouldPrint := false
-		if result.Kind() == reflect.Ptr || result.Kind() == reflect.Interface ||
-			result.Kind() == reflect.Slice || result.Kind() == reflect.Map ||
-			result.Kind() == reflect.Chan || result.Kind() == reflect.Func {
-			shouldPrint = !result.IsNil()
-		} else {
-			shouldPrint = true
+		// yaegi often wraps results in *interface{} - unwrap them
+		unwrapped := result
+
+		// Unwrap pointer to interface
+		if result.Kind() == reflect.Ptr && result.Type().String() == "*interface {}" {
+			if !result.IsNil() {
+				unwrapped = result.Elem() // dereference pointer
+				if unwrapped.Kind() == reflect.Interface && !unwrapped.IsNil() {
+					unwrapped = unwrapped.Elem() // unwrap interface
+				}
+			}
 		}
 
-		if shouldPrint {
-			capturedOutput = formatResult(result)
+		// Don't print function values, invalid types, or nil values
+		if unwrapped.Kind() == reflect.Func {
+			// Skip function values
+		} else if unwrapped.Kind() == reflect.Invalid {
+			// Skip invalid values
+		} else if unwrapped.Kind() == reflect.Interface && unwrapped.IsNil() {
+			// Skip nil interfaces
+		} else {
+			// Check if it's nillable before calling IsNil
+			shouldPrint := false
+			if unwrapped.Kind() == reflect.Ptr || unwrapped.Kind() == reflect.Slice ||
+				unwrapped.Kind() == reflect.Map || unwrapped.Kind() == reflect.Chan {
+				shouldPrint = !unwrapped.IsNil()
+			} else if unwrapped.Kind() == reflect.Interface {
+				shouldPrint = !unwrapped.IsNil()
+			} else {
+				shouldPrint = true
+			}
+
+			if shouldPrint {
+				capturedOutput = formatResult(unwrapped)
+			}
 		}
 	}
 
