@@ -16,7 +16,9 @@ func RunREPL(state *ShellState, evaluator *GoEvaluator, spawner *ProcessSpawner,
 	router := NewRouter(builtins)
 
 	// Setup readline with multiline support
-	rl, err := readline.New("")
+	rl, err := readline.NewEx(&readline.Config{
+		AutoComplete: NewGoshCompleter(),
+	})
 	if err != nil {
 		return err
 	}
