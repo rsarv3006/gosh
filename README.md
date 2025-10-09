@@ -2,20 +2,35 @@
 
 > A hybrid shell that combines Go's interpreter (via yaegi) with traditional command execution.
 
+## Overview
+
+**gosh** is a hybrid shell that combines Go's interpreter (via yaegi) with traditional command execution. Cross-platform capable, designed as a daily driver, with instant startup and no PTY complexity.
+
+### Core Philosophy
+
+- **Go-first**: The shell is fundamentally a Go interpreter with shell conveniences
+- **No shell syntax parsing**: We're not reimplementing bash. Bare commands work, everything else is Go
+- **Hybrid approach**: `ls` just works, but `files := $(ls)` is also valid
+- **Instant startup**: No waiting for REPLs to initialize
+- **Daily driver quality**: Stable, fast, and pleasant to use
+
 ## Features
 
 - **Instant startup**: No waiting for REPLs to initialize (looking at you, Swift)
+- **Multiline Go code**: Write functions, if statements, for loops with proper continuation prompts
+- **Command substitution**: `$(command)` syntax captures command output into Go strings
 - **Go REPL**: Write Go code directly in your shell with persistent state
 - **Traditional commands**: Just works - `ls`, `git status`, etc.
 - **Hybrid mode**: Mix Go code and shell commands seamlessly
 - **Built-ins**: `cd`, `exit`, `pwd` with path expansion
+- **Signal handling**: Proper Ctrl+C behavior for interrupting processes
 - **macOS & Linux**: Windows users can use PowerShell
 
 ## Quick Start
 
 ```bash
 # Install
-go install github.com/yourusername/gosh@latest
+go install github.com/rsarv3006/gosh@latest
 
 # Run
 gosh
@@ -34,12 +49,23 @@ gosh> x := 42
 gosh> fmt.Println(x * 2)
 84
 
+gosh> func add(a, b int) int {
+...     return a + b
+... }
+gosh> fmt.Println(add(5, 3))
+8
+
 gosh> for i := 0; i < 3; i++ {
 ...     fmt.Println("Hello", i)
 ... }
 Hello 0
 Hello 1
 Hello 2
+
+# Command substitution - game changing feature!
+gosh> files := $(ls)
+gosh> fmt.Println(strings.Split(files, "\n")[0])
+README.md
 
 # Common packages pre-imported
 gosh> files, _ := filepath.Glob("*.go")
@@ -54,51 +80,206 @@ gosh> fmt.Printf("Welcome to %s\n", name)
 Welcome to gosh
 ```
 
-## How It Works
+## Architecture
 
-- **yaegi**: Embedded Go interpreter, no external processes
-- **Smart routing**: Detects Go syntax vs shell commands
-- **State persistence**: Variables, functions, imports all persist
-- **PATH resolution**: Finds executables just like your normal shell
+### The Core Loop
+
+```
+1. Display prompt (shows current directory with ~ substitution)
+2. Read line of input (using readline with multiline support)
+3. Parse and route input (smart heuristics + PATH checking)
+4. Execute (yaegi eval, process spawn, or built-in)
+5. Handle output and errors
+6. Update state (working directory, Go interpreter state)
+7. Repeat
+```
+
+### Core Components
+
+#### 1. Router
+
+Takes input and decides: Go eval, process spawn, or built-in:
+
+- Built-ins checked first (`cd`, `exit`)
+- Go syntax markers (`var`, `const`, `func`, `type`, `struct`, `interface`, `import`, `for`, `range`, `if`, `switch`)
+- Assignment or closures (`:=`, `=`, `{`)
+- Function calls with string literals → Go
+- Common Go functions (`fmt.Println`, `len`, `cap`, `make`, `append`, `copy`)
+- Command substitution syntax `$(command)` → Go
+- Fallback to PATH check for commands with parentheses
+
+#### 2. Go Evaluator
+
+**Embedded yaegi interpreter:**
+
+```go
+func NewGoEvaluator() *GoEvaluator {
+    i := interp.New(interp.Options{
+        GoPath: os.Getenv("GOPATH"),
+    })
+    i.Use(stdlib.Symbols)  // All standard library
+    
+    // Pre-import common packages for convenience
+    i.Eval(`
+import (
+    "fmt"
+    "os"
+    "strings"
+    "strconv"
+    "path/filepath"
+)`)
+    return &GoEvaluator{interp: i}
+}
+```
+
+**State persistence:**
+- Variables defined persist automatically
+- Functions defined persist automatically
+- Imports persist automatically
+- No parsing, no filtering, no hoping
+
+#### 3. Process Spawner
+
+Resolves executables in PATH and spawns processes with proper stdio handling:
+
+```go
+func (p *ProcessSpawner) ExecuteInteractive(command string, args []string) ExecutionResult {
+    cmd := exec.Command(command, args...)
+    cmd.Stdin = os.Stdin
+    cmd.Stdout = os.Stdout
+    cmd.Stderr = os.Stderr
+    cmd.Dir = p.state.WorkingDirectory
+    cmd.Env = p.state.EnvironmentVars()
+
+    err := cmd.Start()
+    // Track current process for signal handling
+    p.state.CurrentProcess = cmd.Process
+    defer func() { p.state.CurrentProcess = nil }()
+    
+    err = cmd.Wait()
+    return ExecutionResult{...}
+}
+```
+
+#### 4. Built-in Handler
+
+- `cd` - with path expansion
+- `exit` - sets shouldExit flag
+- Easy to extend
+
+#### 5. State Management
+
+```go
+type ShellState struct {
+    WorkingDirectory string
+    Environment      map[string]string
+    ShouldExit       bool
+    ExitCode         int
+    CurrentProcess   *os.Process  // For signal handling
+}
+```
+
+## Why gosh vs Other Solutions
+
+| Aspect           | Other REPLs        | gosh                               |
+| ---------------- | ----------------- | ---------------------------------- |
+| Startup time     | 10-12 seconds     | ~10ms                              |
+| Architecture     | PTY + external    | Embedded interpreter               |
+| State management | Parse REPL output | Native Go values                   |
+| Complexity       | PTY parsing       | Simple API calls                   |
+| Persistence      | Hope REPL keeps   | Direct variable storage            |
+| Platform         | OS-specific      | Cross-platform                     |
 
 ## Building
 
 ```bash
-git clone https://github.com/yourusername/gosh
+git clone https://github.com/rsarv3006/gosh
 cd gosh
 go build
 ./gosh
 ```
 
-## Architecture
-
-```
-Input → Router → [Go Evaluator | Process Spawner | Builtins] → Output
-                      ↓                ↓                ↓
-                    yaegi          exec.Command      built-in
-```
-
-## Why?
-
-Because waiting 12 seconds for Swift's REPL to start is unacceptable. Go + yaegi = instant startup with full language features.
-
 ## Status
 
-**MVP Complete** (Phase 1):
+**✅ MVP Complete**:
 
-- ✅ Basic REPL loop
-- ✅ Go evaluation with yaegi
-- ✅ Command execution
+- ✅ Basic REPL loop with readline
+- ✅ Multiline Go code support (essential for Go!)
+- ✅ Go evaluation with yaegi and state persistence
+- ✅ Command execution with proper signal handling
 - ✅ Built-ins (cd, exit, pwd)
-- ✅ Path expansion
-- ✅ Smart routing
+- ✅ Command substitution `$(command)` syntax
+- ✅ Path expansion and environment variable handling
+- ✅ Smart routing between Go code and shell commands
+- ✅ Proper Ctrl+C interrupt handling
+- ✅ Clean architecture with separated concerns
 
-**TODO** (Phase 2):
+**🎯 Next Steps (Phase 2)**:
 
-- [ ] Command history
-- [ ] Tab completion
-- [ ] Better error messages
-- [ ] `$(command)` output capture
+- [ ] Command history navigation (up/down arrows)
+- [ ] Tab completion for commands and file paths
+- [ ] Better error messages with line numbers
+- [ ] Config file support (.goshrc)
+- [ ] Pipe support (`ls | grep foo`)
+- [ ] Background jobs (`long_command &`)
+
+## Success Criteria
+
+**✅ MVP Success:**
+
+- [x] Starts instantly (< 100ms)
+- [x] Can run basic commands (`ls`, `git status`, etc.)
+- [x] Can write Go code with persistent state
+- [x] Doesn't crash on Ctrl+C
+- [x] Can write multiline Go code (functions, if statements, loops)
+- [x] Can capture command output with `$(command)`
+- [x] Can `cd` around properly
+
+**🎯 Daily Driver Success:**
+
+- [ ] Want to use it instead of zsh
+- [ ] Tab completion works well enough
+- [ ] Command history doesn't suck
+- [ ] Rarely have to drop back to another shell
+- [ ] Feels snappy and responsive
+
+## Known yaegi Limitations
+
+1. **CGo**: Can't interpret CGo code
+2. **Generics**: Limited support (improving)
+3. **Unsafe**: Some unsafe operations restricted
+
+**These don't matter for a shell REPL - we're doing basic scripting, not systems programming.**
+
+## Repository Structure
+
+```
+gosh/
+├── main.go              # Entry point
+├── repl.go              # Core REPL loop with multiline support
+├── router.go            # Smart routing logic with command substitution detection
+├── evaluator.go         # yaegi wrapper with command substitution processing
+├── spawner.go           # Command execution with signal handling
+├── builtins.go          # Built-in commands
+├── state.go             # State management with process tracking
+├── types.go             # Shared types
+├── go.mod               # Dependencies (yaegi + readline)
+├── README.md            # This file
+└── gosh-design-doc.md   # Original design documentation
+```
+
+## Dependencies
+
+```go
+module github.com/rsarv3006/gosh
+
+go 1.21
+
+require (
+    github.com/chzyer/readline v1.5.1    # Multiline input & history
+    github.com/traefik/yaegi v0.15.1     # Go interpreter
+)
+```
 
 ## License
 
@@ -106,4 +287,4 @@ MIT
 
 ## Contributing
 
-PRs welcome! This is a fun project to learn Go and build something useful.
+PRs welcome! This is a fun project to learn Go and build something useful. The architecture is intentionally simple - everything has clear responsibilities and the code is easy to follow.
