@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode"
 
 	"github.com/chzyer/readline"
 )
@@ -20,26 +21,27 @@ func NewGoshCompleter() readline.AutoCompleter {
 
 // Do implements the readline.AutoCompleteCompleter interface
 func (g *GoshCompleter) Do(line []rune, pos int) (newLine [][]rune, length int) {
-	lineStr := string(line[:pos])
-
-	words := strings.Fields(lineStr)
-
-	// Determine the current token being completed
-	partial := ""
-	if len(words) > 0 && !strings.HasSuffix(lineStr, " ") {
-		partial = words[len(words)-1]
+	wordStart := pos
+	for wordStart > 0 {
+		if unicode.IsSpace(line[wordStart-1]) {
+			break
+		}
+		wordStart--
 	}
 
-	if len(words) <= 1 && !strings.HasSuffix(lineStr, " ") {
-		return g.completeCommands(partial), len(partial)
+	partialRunes := line[wordStart:pos]
+	partial := string(partialRunes)
+
+	prefixWords := strings.Fields(string(line[:wordStart]))
+
+	if len(prefixWords) == 0 {
+		matches := g.completeCommands(partial)
+		return matches, len(partialRunes)
 	}
 
-	cmd := ""
-	if len(words) > 0 {
-		cmd = words[0]
-	}
-
-	return g.completeArguments(cmd, partial), len(partial)
+	cmd := prefixWords[0]
+	matches := g.completeArguments(cmd, partial)
+	return matches, len(partialRunes)
 }
 
 // completeCommands provides command completion

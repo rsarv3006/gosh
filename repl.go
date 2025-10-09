@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"strings"
@@ -33,8 +34,14 @@ func RunREPL(state *ShellState, evaluator *GoEvaluator, spawner *ProcessSpawner,
 
 		// Read input with multiline support
 		input, err := rl.Readline()
-		if err != nil { // io.EOF, readline.ErrInterrupt
-			break
+		if err != nil {
+			if err == readline.ErrInterrupt {
+				continue
+			}
+			if err == io.EOF {
+				break
+			}
+			return err
 		}
 
 		// Skip empty lines
