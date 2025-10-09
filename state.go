@@ -15,6 +15,7 @@ type ShellState struct {
 	Environment      map[string]string
 	ShouldExit       bool
 	ExitCode         int
+	CurrentProcess   *os.Process
 }
 
 func NewShellState() *ShellState {
@@ -35,6 +36,7 @@ func NewShellState() *ShellState {
 		WorkingDirectory: wd,
 		Environment:      env,
 		ExitCode:         0,
+		CurrentProcess:   nil,
 	}
 }
 

@@ -22,6 +22,11 @@ func (r *Router) Route(input string) (InputType, string, []string) {
 		return InputTypeCommand, "", nil
 	}
 
+	// Check for command substitution $(command)
+	if r.hasCommandSubstitution(input) {
+		return InputTypeGo, input, nil
+	}
+
 	// Parse into command and args
 	command, args := r.parseInput(input)
 
@@ -37,6 +42,36 @@ func (r *Router) Route(input string) (InputType, string, []string) {
 
 	// Default to command execution
 	return InputTypeCommand, command, args
+}
+
+// hasCommandSubstitution checks for $(command) syntax
+func (r *Router) hasCommandSubstitution(input string) bool {
+	start := strings.Index(input, "$(")
+	if start == -1 {
+		return false
+	}
+	
+	// Find matching closing parenthesis
+	for i := start + 2; i < len(input); i++ {
+		if input[i] == '(' {
+			// Nested parentheses - find closing for this level
+			depth := 1
+			for j := i + 1; j < len(input) && depth > 0; j++ {
+				if input[j] == '(' {
+					depth++
+				} else if input[j] == ')' {
+					depth--
+				}
+			}
+			if depth > 0 {
+				return false // Unbalanced parentheses
+			}
+			i += depth * 2 // Skip past nested parentheses
+		} else if input[i] == ')' {
+			return true // Found matching closing parenthesis
+		}
+	}
+	return false // No matching closing parenthesis found
 }
 
 func (r *Router) looksLikeGo(input string) bool {

@@ -33,7 +33,7 @@ func NewGoEvaluator() *GoEvaluator {
 	i.Use(stdlib.Symbols)
 
 	// Pre-import common packages for convenience
-	i.Eval(`
+	if _, err := i.Eval(`
 import (
 	"fmt"
 	"os"
@@ -41,7 +41,9 @@ import (
 	"strconv"
 	"path/filepath"
 )
-`)
+`); err != nil {
+		fmt.Printf("Warning: Failed to preload packages: %v\n", err)
+	}
 
 	return &GoEvaluator{
 		interp:      i,
@@ -51,8 +53,11 @@ import (
 }
 
 func (g *GoEvaluator) Eval(code string) ExecutionResult {
+	// Process command substitutions first
+	processedCode := g.processCommandSubstitutions(code)
+
 	// Check if this is a simple assignment - don't print result
-	trimmed := strings.TrimSpace(code)
+	trimmed := strings.TrimSpace(processedCode)
 	isAssignment := strings.Contains(trimmed, ":=") ||
 		(strings.Contains(trimmed, "=") && !strings.Contains(trimmed, "==") &&
 			!strings.Contains(trimmed, "!=") && !strings.Contains(trimmed, "<=") &&
@@ -74,7 +79,7 @@ func (g *GoEvaluator) Eval(code string) ExecutionResult {
 	os.Stderr = w
 
 	// Evaluate the code
-	result, err := g.interp.Eval(code)
+	result, err := g.interp.Eval(processedCode)
 
 	// Restore stdout/stderr and close write end
 	os.Stdout = oldStdout
@@ -144,6 +149,63 @@ func (g *GoEvaluator) Eval(code string) ExecutionResult {
 		ExitCode: exitCode,
 		Error:    err,
 	}
+}
+
+// processCommandSubstituions replaces $(command) with string literals containing command output
+func (g *GoEvaluator) processCommandSubstitutions(code string) string {
+	for {
+		start := strings.Index(code, "$(")
+		if start == -1 {
+			break
+		}
+
+		// Find matching closing parenthesis
+		depth := 1
+		end := -1
+		for i := start + 2; i < len(code); i++ {
+			if code[i] == '(' {
+				depth++
+			} else if code[i] == ')' {
+				depth--
+				if depth == 0 {
+					end = i
+					break
+				}
+			}
+		}
+
+		if end == -1 {
+			break // Unbalanced, return original
+		}
+
+		// Extract command
+		command := code[start+2 : end]
+		
+		// Execute command and get output
+		// Parse the command properly
+		parts := strings.Fields(command)
+		if len(parts) == 0 {
+			code = code[:start] + "\"\"" + code[end+1:] // Replace with empty string
+			continue
+		}
+		cmd := parts[0]
+		args := parts[1:]
+		
+		spawner := NewProcessSpawner(&ShellState{}) // Use empty state for simple command execution
+		result := spawner.Execute(cmd, args)
+		
+		// Escape the output for Go string literal
+		output := strings.ReplaceAll(result.Output, "\\", "\\\\")
+		output = strings.ReplaceAll(output, "\"", "\\\"")
+		output = strings.ReplaceAll(output, "\n", "\\n")
+		output = strings.ReplaceAll(output, "\t", "\\t")
+		output = strings.ReplaceAll(output, "\r", "\\r")
+
+		// Replace $(command) with string literal
+		code = code[:start] + "\"" + output + "\"" + code[end+1:]
+	}
+
+	return code
 }
 
 func formatResult(v reflect.Value) string {

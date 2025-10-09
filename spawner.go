@@ -63,7 +63,22 @@ func (p *ProcessSpawner) ExecuteInteractive(command string, args []string) Execu
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	err := cmd.Run()
+	err := cmd.Start()
+	if err != nil {
+		return ExecutionResult{
+			Output:   "",
+			ExitCode: 1,
+			Error:    err,
+		}
+	}
+
+	// Track the current process
+	p.state.CurrentProcess = cmd.Process
+	defer func() {
+		p.state.CurrentProcess = nil
+	}()
+
+	err = cmd.Wait()
 
 	exitCode := 0
 	if err != nil {
