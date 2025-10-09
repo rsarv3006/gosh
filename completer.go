@@ -34,13 +34,17 @@ func (g *GoshCompleter) Do(line []rune, pos int) (newLine [][]rune, length int) 
 
 	prefixWords := strings.Fields(string(line[:wordStart]))
 
+	var matches [][]rune
+	
 	if len(prefixWords) == 0 {
-		matches := g.completeCommands(partial)
-		return matches, len(partialRunes)
+		matches = g.completeCommands(partial)
+	} else {
+		cmd := prefixWords[0]
+		matches = g.completeArguments(cmd, partial)
 	}
-
-	cmd := prefixWords[0]
-	matches := g.completeArguments(cmd, partial)
+	
+	// For readline AutoCompleter, we need to return the completions as-is.
+	// The library will handle the replacement logic correctly.
 	return matches, len(partialRunes)
 }
 
@@ -59,7 +63,9 @@ func (g *GoshCompleter) completeCommands(partial string) [][]rune {
 
 	for _, cmd := range commands {
 		if strings.HasPrefix(cmd, partial) {
-			matches = append(matches, []rune(cmd))
+			// Return only the suffix that needs to be added
+			suffix := cmd[len(partial):]
+			matches = append(matches, []rune(suffix))
 		}
 	}
 
@@ -83,7 +89,9 @@ func (g *GoshCompleter) completeArguments(cmd, partial string) [][]rune {
 		var matches [][]rune
 		for _, topic := range topics {
 			if strings.HasPrefix(topic, partial) {
-				matches = append(matches, []rune(topic))
+				// Return only the suffix that needs to be added
+				suffix := topic[len(partial):]
+				matches = append(matches, []rune(suffix))
 			}
 		}
 		return matches
@@ -147,7 +155,16 @@ func (g *GoshCompleter) completeFiles(partial string, dirsOnly bool) [][]rune {
 				fullName = partial[:lastSlash+1] + name
 			}
 
-			matches = append(matches, []rune(fullName))
+			// For file completion, we need to return the suffix that needs to be added
+			// to complete the current path component
+			var suffix string
+			if lastSlash == -1 {
+				suffix = name
+			} else {
+				suffix = fullName[len(partial):]
+			}
+
+			matches = append(matches, []rune(suffix))
 		}
 	}
 
