@@ -15,12 +15,18 @@ import (
 )
 
 type GoEvaluator struct {
-	interp *interp.Interpreter
+	interp      *interp.Interpreter
+	stdoutPipe  *os.File
+	stderrPipe  *os.File
+	originalOut *os.File
+	originalErr *os.File
 }
 
 func NewGoEvaluator() *GoEvaluator {
 	i := interp.New(interp.Options{
 		GoPath: os.Getenv("GOPATH"),
+		Stdout: os.Stdout, // Will be updated per-eval
+		Stderr: os.Stderr,
 	})
 
 	// Load standard library
@@ -37,39 +43,53 @@ import (
 )
 `)
 
-	return &GoEvaluator{interp: i}
+	return &GoEvaluator{
+		interp:      i,
+		originalOut: os.Stdout,
+		originalErr: os.Stderr,
+	}
 }
 
 func (g *GoEvaluator) Eval(code string) ExecutionResult {
 	// Check if this is a simple assignment - don't print result
-	isAssignment := strings.Contains(strings.TrimSpace(code), ":=") ||
-		(strings.Contains(code, "=") && !strings.Contains(code, "==") &&
-			!strings.Contains(code, "!=") && !strings.Contains(code, "<=") &&
-			!strings.Contains(code, ">="))
+	trimmed := strings.TrimSpace(code)
+	isAssignment := strings.Contains(trimmed, ":=") ||
+		(strings.Contains(trimmed, "=") && !strings.Contains(trimmed, "==") &&
+			!strings.Contains(trimmed, "!=") && !strings.Contains(trimmed, "<=") &&
+			!strings.Contains(trimmed, ">="))
 
-	// Capture stdout
+	// Check if this is a print statement - don't show return value
+	isPrintStatement := strings.Contains(trimmed, "fmt.Print") ||
+		strings.Contains(trimmed, "fmt.Fprint") ||
+		strings.Contains(trimmed, "println(") ||
+		strings.Contains(trimmed, "print(")
+
+	// Create a pipe to capture output
+	r, w, _ := os.Pipe()
+
+	// Redirect os.Stdout and os.Stderr
 	oldStdout := os.Stdout
 	oldStderr := os.Stderr
-	r, w, _ := os.Pipe()
 	os.Stdout = w
 	os.Stderr = w
 
 	// Evaluate the code
 	result, err := g.interp.Eval(code)
 
-	// Restore stdout/stderr
-	w.Close()
+	// Restore stdout/stderr and close write end
 	os.Stdout = oldStdout
 	os.Stderr = oldStderr
+	w.Close()
 
-	// Read captured output
+	// Read all captured output
 	var buf bytes.Buffer
 	io.Copy(&buf, r)
-	output := buf.String()
+	r.Close()
+	capturedOutput := buf.String()
 
-	// If there's a result value and no explicit output, print it
-	// But skip assignments and if we already printed to stdout
-	if err == nil && result.IsValid() && !isAssignment {
+	// Determine if we should show the result value
+	// Show result if: no error, valid result, not an assignment, not a print, and NO stdout output
+	if err == nil && result.IsValid() && !isAssignment && !isPrintStatement && len(capturedOutput) == 0 {
 		// Check if it's nillable before calling IsNil
 		shouldPrint := false
 		if result.Kind() == reflect.Ptr || result.Kind() == reflect.Interface ||
@@ -80,11 +100,12 @@ func (g *GoEvaluator) Eval(code string) ExecutionResult {
 			shouldPrint = true
 		}
 
-		// Only show result if we didn't already print output
-		if shouldPrint && output == "" {
-			output = formatResult(result)
+		if shouldPrint {
+			capturedOutput = formatResult(result)
 		}
 	}
+
+	output := strings.TrimSpace(capturedOutput)
 
 	exitCode := 0
 	if err != nil {

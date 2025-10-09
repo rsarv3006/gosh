@@ -64,6 +64,11 @@ func (r *Router) looksLikeGo(input string) bool {
 		}
 	}
 
+	// Check for arithmetic or comparison operators (likely Go expression)
+	if strings.ContainsAny(input, "+-*/%<>!&|^") {
+		return true
+	}
+
 	// Check for function calls with string literals (common in Go)
 	if strings.Contains(input, `"`) && strings.Contains(input, "(") {
 		return true
@@ -84,6 +89,26 @@ func (r *Router) looksLikeGo(input string) bool {
 	// Check for multi-line or block structure
 	if strings.Contains(input, "{") || strings.Contains(input, "}") {
 		return true
+	}
+
+	// Single word with no special shell chars - could be a variable reference
+	// But need to distinguish from commands
+	if !strings.ContainsAny(input, " \t/.-") {
+		// Single identifier - try as Go variable if it's not a known command
+		// This handles typos by letting them fail as commands
+		if _, found := FindInPath(input); found {
+			return false // It's a command
+		}
+		// Check if it contains only valid Go identifier characters
+		// If it looks like a filename or typo, let it fail as a command
+		hasValidGoChars := true
+		for _, ch := range input {
+			if !unicode.IsLetter(ch) && !unicode.IsDigit(ch) && ch != '_' {
+				hasValidGoChars = false
+				break
+			}
+		}
+		return hasValidGoChars
 	}
 
 	return false
@@ -127,3 +152,4 @@ func (r *Router) parseInput(input string) (string, []string) {
 
 	return args[0], args[1:]
 }
+
