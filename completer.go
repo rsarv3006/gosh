@@ -159,7 +159,8 @@ func (g *GoshCompleter) completeFiles(partial string, dirsOnly bool) [][]rune {
 			// to complete the current path component
 			var suffix string
 			if lastSlash == -1 {
-				suffix = name
+				// Simple filename completion - return only the part after the partial
+				suffix = name[len(pattern):]
 			} else {
 				suffix = fullName[len(partial):]
 			}
