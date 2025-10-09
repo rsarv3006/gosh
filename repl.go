@@ -18,7 +18,6 @@ func RunREPL(state *ShellState, evaluator *GoEvaluator, spawner *ProcessSpawner,
 	// Setup readline with multiline support
 	rl, err := readline.NewEx(&readline.Config{
 		AutoComplete: NewGoshCompleter(),
-		UniqueEditLine: true, // Enable better completion
 	})
 	if err != nil {
 		return err
@@ -47,13 +46,13 @@ func RunREPL(state *ShellState, evaluator *GoEvaluator, spawner *ProcessSpawner,
 		for !isComplete(input) {
 			// Set continuation prompt
 			rl.SetPrompt("... ")
-			
+
 			// Read next line
 			line, err := rl.Readline()
 			if err != nil {
 				break
 			}
-			
+
 			// Add continue marker for readability
 			input += "\n" + line
 		}
@@ -99,39 +98,39 @@ func RunREPL(state *ShellState, evaluator *GoEvaluator, spawner *ProcessSpawner,
 
 func isComplete(input string) bool {
 	input = strings.TrimSpace(input)
-	
+
 	// Check for unclosed braces
 	openBraces := strings.Count(input, "{")
 	closeBraces := strings.Count(input, "}")
 	if openBraces != closeBraces {
 		return false
 	}
-	
+
 	// Check for unclosed parentheses
 	openParens := strings.Count(input, "(")
 	closeParens := strings.Count(input, ")")
 	if openParens != closeParens {
 		return false
 	}
-	
+
 	// Check for unclosed brackets
 	openBrackets := strings.Count(input, "[")
 	closeBrackets := strings.Count(input, "]")
 	if openBrackets != closeBrackets {
 		return false
 	}
-	
+
 	// Check if line ends with incomplete statement
-	if strings.HasSuffix(input, ",") || 
-	   strings.HasSuffix(input, "+") || 
-	   strings.HasSuffix(input, "-") || 
-	   strings.HasSuffix(input, "*") || 
-	   strings.HasSuffix(input, "/") ||
-	   strings.HasSuffix(input, "||") ||
-	   strings.HasSuffix(input, "&&") {
+	if strings.HasSuffix(input, ",") ||
+		strings.HasSuffix(input, "+") ||
+		strings.HasSuffix(input, "-") ||
+		strings.HasSuffix(input, "*") ||
+		strings.HasSuffix(input, "/") ||
+		strings.HasSuffix(input, "||") ||
+		strings.HasSuffix(input, "&&") {
 		return false
 	}
-	
+
 	return true
 }
 

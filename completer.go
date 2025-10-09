@@ -21,41 +21,29 @@ func NewGoshCompleter() readline.AutoCompleter {
 // Do implements the readline.AutoCompleteCompleter interface
 func (g *GoshCompleter) Do(line []rune, pos int) (newLine [][]rune, length int) {
 	lineStr := string(line[:pos])
-	
-	// Split the line into words to find the current word
+
 	words := strings.Fields(lineStr)
-	var lastWord string
-	var wordStart int
-	
-	if len(words) == 0 {
-		// No words yet, suggest commands
-		return g.completeCommands("", 0)
+
+	// Determine the current token being completed
+	partial := ""
+	if len(words) > 0 && !strings.HasSuffix(lineStr, " ") {
+		partial = words[len(words)-1]
 	}
-	
-	// Find the current word being completed
-	if strings.HasSuffix(lineStr, " ") {
-		// Completing a new word after a space
-		lastWord = ""
-		wordStart = pos
-	} else {
-		// Completing the last word
-		lastWord = words[len(words)-1]
-		wordStart = strings.LastIndex(lineStr[:pos], lastWord)
+
+	if len(words) <= 1 && !strings.HasSuffix(lineStr, " ") {
+		return g.completeCommands(partial), len(partial)
 	}
-	
-	// Determine completion context
-	if len(words) == 1 {
-		// First word - suggest commands
-		return g.completeCommands(lastWord, wordStart)
-	} else {
-		// Arguments - suggest files based on command
-		cmd := words[0]
-		return g.completeArguments(cmd, lastWord, wordStart)
+
+	cmd := ""
+	if len(words) > 0 {
+		cmd = words[0]
 	}
+
+	return g.completeArguments(cmd, partial), len(partial)
 }
 
 // completeCommands provides command completion
-func (g *GoshCompleter) completeCommands(partial string, start int) ([][]rune, int) {
+func (g *GoshCompleter) completeCommands(partial string) [][]rune {
 	var matches [][]rune
 
 	// Commands to complete
@@ -73,20 +61,20 @@ func (g *GoshCompleter) completeCommands(partial string, start int) ([][]rune, i
 		}
 	}
 
-	return matches, start
+	return matches
 }
 
 // completeArguments provides argument completion
-func (g *GoshCompleter) completeArguments(cmd, partial string, start int) ([][]rune, int) {
+func (g *GoshCompleter) completeArguments(cmd, partial string) [][]rune {
 	if cmd == "cd" {
-		return g.completeFiles(partial, start, true) // Directories only
+		return g.completeFiles(partial, true) // Directories only
 	}
-	
+
 	// For commands that take files
 	if cmd == "ls" || cmd == "cat" || cmd == "head" || cmd == "tail" || cmd == "grep" {
-		return g.completeFiles(partial, start, false) // All files
+		return g.completeFiles(partial, false) // All files
 	}
-	
+
 	// For help command
 	if cmd == "help" {
 		topics := []string{"cd", "pwd", "exit", "help", "go", "golang", "yaegi", "substitution", "command"}
@@ -96,22 +84,22 @@ func (g *GoshCompleter) completeArguments(cmd, partial string, start int) ([][]r
 				matches = append(matches, []rune(topic))
 			}
 		}
-		return matches, start
+		return matches
 	}
-	
+
 	// Default to file completion for unknown commands
-	return g.completeFiles(partial, start, false)
+	return g.completeFiles(partial, false)
 }
 
 // completeFiles provides file/directory completion
-func (g *GoshCompleter) completeFiles(partial string, start int, dirsOnly bool) ([][]rune, int) {
+func (g *GoshCompleter) completeFiles(partial string, dirsOnly bool) [][]rune {
 	var matches [][]rune
 
 	// Extract directory and file pattern
 	dir := "."
 	pattern := partial
 	var lastSlash int
-	
+
 	if lastSlash = strings.LastIndex(partial, "/"); lastSlash != -1 {
 		dir = partial[:lastSlash]
 		if dir == "" {
@@ -134,21 +122,21 @@ func (g *GoshCompleter) completeFiles(partial string, start int, dirsOnly bool) 
 
 	files, err := os.ReadDir(dir)
 	if err != nil {
-		return matches, start
+		return matches
 	}
 
 	for _, file := range files {
 		if dirsOnly && !file.IsDir() {
 			continue
 		}
-		
+
 		name := file.Name()
 		if strings.HasPrefix(name, pattern) {
 			// Add trailing slash for directories
 			if file.IsDir() {
 				name += "/"
 			}
-			
+
 			// Reconstruct full path
 			var fullName string
 			if lastSlash == -1 {
@@ -156,10 +144,10 @@ func (g *GoshCompleter) completeFiles(partial string, start int, dirsOnly bool) 
 			} else {
 				fullName = partial[:lastSlash+1] + name
 			}
-			
+
 			matches = append(matches, []rune(fullName))
 		}
 	}
 
-	return matches, start
+	return matches
 }
