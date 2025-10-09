@@ -18,6 +18,7 @@ func RunREPL(state *ShellState, evaluator *GoEvaluator, spawner *ProcessSpawner,
 	// Setup readline with multiline support
 	rl, err := readline.NewEx(&readline.Config{
 		AutoComplete: NewGoshCompleter(),
+		UniqueEditLine: true, // Enable better completion
 	})
 	if err != nil {
 		return err
