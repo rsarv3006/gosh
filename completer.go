@@ -19,10 +19,15 @@ func NewGoshCompleter() readline.AutoCompleter {
 	return &GoshCompleter{}
 }
 
+// NewGoshCompleterForTesting creates a new completer for testing (returns concrete type)
+func NewGoshCompleterForTesting() *GoshCompleter {
+	return &GoshCompleter{}
+}
+
 // Do implements the readline.AutoCompleteCompleter interface
 func (g *GoshCompleter) Do(line []rune, pos int) (newLine [][]rune, length int) {
 	wordStart := pos
-	for wordStart > 0 {
+	for wordStart > 0 && wordStart <= len(line) {
 		if unicode.IsSpace(line[wordStart-1]) {
 			break
 		}

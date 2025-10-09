@@ -35,13 +35,13 @@ func (r *Router) Route(input string) (InputType, string, []string) {
 		return InputTypeBuiltin, command, args
 	}
 
-	// Check for Go syntax markers
-	if r.looksLikeGo(input) {
-		return InputTypeGo, input, nil
+	// Check if it looks like a shell command first
+	if r.looksLikeShellCommand(input) {
+		return InputTypeCommand, command, args
 	}
 
-	// Default to command execution
-	return InputTypeCommand, command, args
+	// Default to Go evaluation - safer fallback
+	return InputTypeGo, input, nil
 }
 
 // hasCommandSubstitution checks for $(command) syntax
@@ -74,71 +74,56 @@ func (r *Router) hasCommandSubstitution(input string) bool {
 	return false // No matching closing parenthesis found
 }
 
-func (r *Router) looksLikeGo(input string) bool {
+
+
+func (r *Router) looksLikeShellCommand(input string) bool {
 	input = strings.TrimSpace(input)
-
-	// Go keywords that indicate code
-	goKeywords := []string{
-		"var ", "const ", "func ", "type ", "struct ", "interface ",
-		"import ", "package ", "for ", "range ", "if ", "switch ",
-		"return ", "go ", "defer ", "select ", "case ",
+	
+	// Empty string is definitely not a shell command
+	if input == "" {
+		return false
 	}
 
-	for _, kw := range goKeywords {
-		if strings.HasPrefix(input, kw) {
-			return true
-		}
-	}
-
-	// Check for assignment operators
-	if strings.Contains(input, ":=") || strings.Contains(input, "=") {
-		// But not ==, !=, <=, >=
-		if !strings.Contains(input, "==") && !strings.Contains(input, "!=") &&
-			!strings.Contains(input, "<=") && !strings.Contains(input, ">=") {
-			return true
-		}
-	}
-
-	// Check for arithmetic or comparison operators (likely Go expression)
-	if strings.ContainsAny(input, "+-*/%<>!&|^") {
+	// Check for obvious shell patterns
+	command, args := r.parseInput(input)
+	
+	// If first word is in PATH, it's definitely a command
+	if _, found := FindInPath(command); found {
 		return true
 	}
-
-	// Check for function calls with string literals (common in Go)
-	if strings.Contains(input, `"`) && strings.Contains(input, "(") {
-		return true
-	}
-
-	// Common Go functions
-	goFunctions := []string{
-		"fmt.Print", "fmt.Sprint", "fmt.Fprint",
-		"len(", "cap(", "make(",
-		"append(", "copy(", "delete(", "panic(", "recover(",
-		"println(", "print(",
-	}
-
-	for _, fn := range goFunctions {
-		if strings.Contains(input, fn) {
-			return true
+	
+	// Shell command patterns:
+	
+	// Has arguments/flags (dash or slash patterns)
+	if len(args) > 0 {
+		for _, arg := range args {
+			// Shell flags typically start with -
+			if strings.HasPrefix(arg, "-") {
+				return true
+			}
+			// Shell paths often contain /
+			if strings.Contains(arg, "/") {
+				return true
+			}
 		}
 	}
-
-	// Check for multi-line or block structure
-	if strings.Contains(input, "{") || strings.Contains(input, "}") {
+	
+	// Contains shell operators like pipes, redirects
+	if strings.ContainsAny(input, "|><") {
 		return true
 	}
-
-	// Single word with no special shell chars - could be a variable reference OR command
-	// We'll try as Go first, and fallback to command if undefined
-	if !strings.ContainsAny(input, " \t/.-") {
-		// If it's in PATH, definitely a command
-		if _, found := FindInPath(input); found {
-			return false
-		}
-		// Otherwise treat as potential Go variable (will fallback if undefined)
-		return true
+	
+	// Go syntax patterns - if detected, definitely NOT a shell command
+	if strings.ContainsAny(input, "{}();:=") || strings.Contains(input, "\"") {
+		return false // These are Go patterns
 	}
-
+	
+	// Single word with no obvious Go syntax, try as command first
+	if !strings.ContainsAny(input, "|><") {
+		return true // Try as command first, fallback to Go if not in PATH
+	}
+	
+	// Default to false (let it fall back to Go)
 	return false
 }
 
