@@ -13,7 +13,7 @@ func main() {
 	spawner := NewProcessSpawner(state)
 	builtins := NewBuiltinHandler(state)
 
-	fmt.Println("gosh v0.1.0 - Go shell with yaegi")
+	fmt.Println("gosh v0.0.1 - Go shell with yaegi")
 	fmt.Println("Type 'exit' to quit, try some Go code or shell commands!")
 	fmt.Println()
 

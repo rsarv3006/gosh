@@ -3,7 +3,9 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -52,7 +54,16 @@ func (s *ShellState) GetPrompt() string {
 		dir = "~" + strings.TrimPrefix(dir, home)
 	}
 
-	return dir + "> "
+	gitBranch := ""
+	if isInGitRepo(s.WorkingDirectory) {
+		cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
+		output, err := cmd.Output()
+		if err == nil {
+			gitBranch = fmt.Sprintf("git:(%s)", strings.TrimSpace(string(output)))
+		}
+	}
+
+	return fmt.Sprintf("%s %s > ", dir, gitBranch)
 }
 
 // ExpandPath handles ~, environment variables, and path normalization
@@ -75,4 +86,17 @@ func (s *ShellState) ExpandPath(path string) string {
 
 	// Clean the path
 	return filepath.Clean(path)
+}
+
+func isInGitRepo(path string) bool {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return false
+	}
+
+	cmd := exec.Command("git", "-C", absPath, "rev-parse", "--is-inside-work-tree")
+	if err := cmd.Run(); err != nil {
+		return false
+	}
+	return true
 }
