@@ -105,7 +105,7 @@ func (b *BuiltinHandler) exit(args []string) ExecutionResult {
 
 	return ExecutionResult{
 		Output:   "",
-		ExitCode: b.state.ExitCode,
+		ExitCode: 0, // Always return success for exit command itself
 		Error:    nil,
 	}
 }
