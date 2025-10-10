@@ -3,6 +3,7 @@
 package main
 
 import (
+	"crypto/md5"
 	"fmt"
 	"os"
 	"os/exec"
@@ -16,6 +17,9 @@ type ShellState struct {
 	ShouldExit       bool
 	ExitCode         int
 	CurrentProcess   *os.Process
+	// Cached prompt to avoid expensive color rendering
+	cachedPrompt     string
+	promptHash       string  // Content hash to detect changes
 }
 
 func NewShellState() *ShellState {
@@ -48,6 +52,7 @@ func (s *ShellState) EnvironmentSlice() []string {
 	return env
 }
 
+// GetPrompt returns a cached, colored prompt
 func (s *ShellState) GetPrompt() string {
 	dir := s.WorkingDirectory
 	home := s.Environment["HOME"]
@@ -66,6 +71,58 @@ func (s *ShellState) GetPrompt() string {
 	}
 
 	return fmt.Sprintf("%s %s > ", dir, gitBranch)
+}
+
+// createPromptHash creates a hash of the current prompt-relevant state
+func (s *ShellState) createPromptHash() string {
+	hash := md5.New()
+	hash.Write([]byte(s.WorkingDirectory))
+	
+	// Add git branch if in a git repo
+	if isInGitRepo(s.WorkingDirectory) {
+		cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
+		output, err := cmd.Output()
+		if err == nil {
+			hash.Write(output)
+		}
+	}
+	
+	return fmt.Sprintf("%x", hash.Sum(nil))
+}
+
+// generatePromptWithColors creates the actual colored prompt
+func (s *ShellState) generatePromptWithColors() string {
+	colors := GetColorManager()
+	dir := s.WorkingDirectory
+	home := s.Environment["HOME"]
+
+	if home != "" && strings.HasPrefix(dir, home) {
+		dir = "~" + strings.TrimPrefix(dir, home)
+	}
+
+	// Style directory (only this one call to colors)
+	styledDir := colors.StylePrompt(dir, "directory")
+
+	gitBranch := ""
+	if isInGitRepo(s.WorkingDirectory) {
+		cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
+		output, err := cmd.Output()
+		if err == nil {
+			branchName := strings.TrimSpace(string(output))
+			gitBranch = colors.StylePrompt(fmt.Sprintf("git:(%s)", branchName), "git-branch")
+		}
+	}
+
+	// Style prompt symbols
+	symbol := colors.StylePrompt(">", "symbol")
+	space := colors.StylePrompt(" ", "separator")
+
+	return fmt.Sprintf("%s%s%s%s%s", styledDir, space, gitBranch, space, symbol)
+}
+
+// ForcePromptRefresh can be called when we know the prompt should be updated
+func (s *ShellState) ForcePromptRefresh() {
+	s.promptHash = ""  // Clear hash to force refresh
 }
 
 // ExpandPath handles ~, environment variables, and path normalization

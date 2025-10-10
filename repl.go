@@ -89,9 +89,16 @@ func RunREPL(state *ShellState, evaluator *GoEvaluator, spawner *ProcessSpawner,
 			}
 		}
 
-		// Display output
+		// Display output with colors
 		if result.Output != "" {
-			fmt.Println(result.Output)
+			colors := GetColorManager()
+			if result.ExitCode != 0 {
+				// Error output
+				fmt.Println(colors.StyleOutput(result.Output, "error"))
+			} else {
+				// Success output - but don't color Go evaluation results that might interfere
+				fmt.Println(result.Output)
+			}
 		}
 
 		// Update last exit code (could store this in state if needed)

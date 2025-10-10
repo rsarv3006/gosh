@@ -133,6 +133,9 @@ type ColorManager struct {
 // Global color manager instance
 var colorManager *ColorManager
 
+// Global flag to track when we're in yaegi evaluation
+var inYaegiEval = false
+
 // NewColorManager creates a new color manager with default theme
 func NewColorManager() *ColorManager {
 	return &ColorManager{
@@ -288,9 +291,25 @@ func (cm *ColorManager) StyleOutput(text, outputType string) string {
 	return lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(text)
 }
 
-// StyleMessage styles system messages
+
+
+// GetColorManager returns the global color manager
+// Safe to call anytime (including during yaegi evaluation)
+func GetColorManager() *ColorManager {
+	if colorManager == nil {
+		colorManager = NewColorManager()
+	}
+	return colorManager
+}
+
+// SetYaegiEvalState is called by the evaluator to indicate when we're evaluating
+func SetYaegiEvalState(inEval bool) {
+	inYaegiEval = inEval
+}
+
+// StyleMessage safely styles message text, avoiding calls during yaegi eval
 func (cm *ColorManager) StyleMessage(text, messageType string) string {
-	if cm.noColor || text == "" {
+	if cm.noColor || inYaegiEval || text == "" {
 		return text
 	}
 	
@@ -313,8 +332,9 @@ func (cm *ColorManager) StyleMessage(text, messageType string) string {
 	return lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(text)
 }
 
-// GetColorManager returns the global color manager
-func GetColorManager() *ColorManager {
+// GetColorManagerSafe returns the global color manager
+// Only use when NOT during yaegi evaluation
+func GetColorManagerSafe() *ColorManager {
 	if colorManager == nil {
 		colorManager = NewColorManager()
 	}

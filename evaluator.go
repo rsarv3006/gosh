@@ -134,6 +134,12 @@ func (g *GoEvaluator) LoadConfig() error {
 }
 
 func (g *GoEvaluator) Eval(code string) ExecutionResult {
+	// Mark that we're entering yaegi evaluation
+	SetYaegiEvalState(true)
+	defer func() {
+		SetYaegiEvalState(false)
+	}()
+	
 	// Process command substitutions first
 	processedCode := g.processCommandSubstitutions(code)
 
