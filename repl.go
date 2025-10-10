@@ -135,17 +135,61 @@ func isComplete(input string) bool {
 	}
 
 	// Check if line ends with incomplete statement
+	// But be more careful about "/" - it could be path completion
 	if strings.HasSuffix(input, ",") ||
 		strings.HasSuffix(input, "+") ||
 		strings.HasSuffix(input, "-") ||
 		strings.HasSuffix(input, "*") ||
-		strings.HasSuffix(input, "/") ||
+		(strings.HasSuffix(input, "/") && !looksLikePathCompletion(input)) ||
 		strings.HasSuffix(input, "||") ||
 		strings.HasSuffix(input, "&&") {
 		return false
 	}
 
 	return true
+}
+
+// looksLikePathCompletion checks if the trailing "/" is likely from path completion
+func looksLikePathCompletion(input string) bool {
+	input = strings.TrimSpace(input)
+	
+	// If it ends with "/" and looks like a path command, treat it as complete
+	if !strings.HasSuffix(input, "/") {
+		return false
+	}
+	
+	// Split into words and check if it looks like a command with path argument
+	words := strings.Fields(input)
+	if len(words) == 0 {
+		return false
+	}
+	
+	command := words[0]
+	lastWord := words[len(words)-1]
+	
+	// Common commands that take directory paths
+	pathCommands := map[string]bool{
+		"cd": true, "ls": true, "pwd": false, "cat": false, 
+		"grep": false, "find": true, "mkdir": true, "rmdir": true,
+		"rm": false, "mv": false, "cp": false, "touch": false,
+	}
+	
+	// If it's a known path command and the last word ends with "/", it's path completion
+	if pathCommands[command] && strings.HasSuffix(lastWord, "/") {
+		return true
+	}
+	
+	// If the last word contains path separators, it's likely a path
+	if strings.Contains(lastWord, "/") || strings.HasPrefix(lastWord, "~") {
+		return true
+	}
+	
+	// Heuristic: if there's only one word that ends with "/" and no Go syntax, it's likely a path
+	if len(words) == 1 && !strings.ContainsAny(input, "{}();:=") {
+		return true
+	}
+	
+	return false
 }
 
 func setupSignals(state *ShellState) {

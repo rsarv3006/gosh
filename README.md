@@ -298,12 +298,12 @@ go build
 
 **🎯 Daily Driver Success:**
 
-- [ ] Want to use it instead of zsh
-- [ ] Tab completion works well enough
+- [x] Want to use it instead of zsh ✅
+- [x] Tab completion works well enough ✅
 - [ ] Command history doesn't suck
 - [x] Configurable with Go code ✅
-- [ ] Rarely have to drop back to another shell
-- [ ] Feels snappy and responsive
+- [x] Rarely have to drop back to another shell ✅
+- [x] Feels snappy and responsive ✅
 
 ## Known yaegi Limitations
 
