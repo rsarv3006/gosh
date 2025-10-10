@@ -53,24 +53,24 @@ func (s *ShellState) EnvironmentSlice() []string {
 }
 
 // GetPrompt returns a cached, colored prompt
+// GetPrompt returns a cached, colored prompt
 func (s *ShellState) GetPrompt() string {
-	dir := s.WorkingDirectory
-	home := s.Environment["HOME"]
-
-	if home != "" && strings.HasPrefix(dir, home) {
-		dir = "~" + strings.TrimPrefix(dir, home)
+	// Create a hash of the current state to detect changes
+	stateHash := s.createPromptHash()
+	
+	// Return cached prompt if nothing changed
+	if s.promptHash == stateHash && s.cachedPrompt != "" {
+		return s.cachedPrompt
 	}
-
-	gitBranch := ""
-	if isInGitRepo(s.WorkingDirectory) {
-		cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
-		output, err := cmd.Output()
-		if err == nil {
-			gitBranch = fmt.Sprintf("git:(%s)", strings.TrimSpace(string(output)))
-		}
-	}
-
-	return fmt.Sprintf("%s %s > ", dir, gitBranch)
+	
+	// Generate new prompt
+	newPrompt := s.generatePromptWithColors()
+	
+	// Cache it
+	s.cachedPrompt = newPrompt
+	s.promptHash = stateHash
+	
+	return newPrompt
 }
 
 // createPromptHash creates a hash of the current prompt-relevant state
