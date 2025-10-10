@@ -4,7 +4,6 @@ package main
 
 import (
 	"os"
-	"path/filepath"
 	"strings"
 	"unicode"
 
@@ -114,6 +113,16 @@ func (g *GoshCompleter) completeArguments(cmd, partial string) [][]rune {
 func (g *GoshCompleter) completeFiles(partial string, dirsOnly bool) [][]rune {
 	var matches [][]rune
 
+	// Handle ~ expansion separately - detect early to avoid path parsing conflicts
+	var isTildePath bool
+	var homeDir string
+	originalPartialForSuffix := partial
+	
+	if strings.HasPrefix(partial, "~") {
+		isTildePath = true
+		homeDir = os.Getenv("HOME")
+	}
+
 	// Extract directory and file pattern
 	dir := "."
 	pattern := partial
@@ -125,17 +134,12 @@ func (g *GoshCompleter) completeFiles(partial string, dirsOnly bool) [][]rune {
 			dir = "/"
 		}
 		pattern = partial[lastSlash+1:]
-	} else if strings.HasPrefix(partial, "~") {
-		// Handle home directory
-		dir = os.Getenv("HOME")
-		if len(partial) > 1 {
-			remaining := partial[1:]
-			if lastSlash := strings.LastIndex(remaining, "/"); lastSlash != -1 {
-				dir = filepath.Join(dir, remaining[:lastSlash])
-				pattern = remaining[lastSlash+1:]
-			} else {
-				pattern = remaining
-			}
+	}
+
+	// Handle ~ expansion for directory lookup
+	if isTildePath {
+		if strings.HasPrefix(dir, "~") {
+			dir = strings.Replace(dir, "~", homeDir, 1)
 		}
 	}
 
@@ -152,26 +156,27 @@ func (g *GoshCompleter) completeFiles(partial string, dirsOnly bool) [][]rune {
 		name := file.Name()
 		if strings.HasPrefix(name, pattern) {
 			// Add trailing slash for directories
+			completionName := name
 			if file.IsDir() {
-				name += "/"
+				completionName += "/"
 			}
 
-			// Reconstruct full path
-			var fullName string
-			if lastSlash == -1 {
-				fullName = name
-			} else {
-				fullName = partial[:lastSlash+1] + name
-			}
-
-			// For file completion, we need to return the suffix that needs to be added
-			// to complete the current path component
+			// Calculate the suffix to return
 			var suffix string
 			if lastSlash == -1 {
-				// Simple filename completion - return only the part after the partial
-				suffix = name[len(pattern):]
+				// Simple filename completion - return suffix of the filename
+				suffix = completionName[len(pattern):]
 			} else {
-				suffix = fullName[len(partial):]
+				// Path completion - reconstruct the path and calculate suffix
+				var completedPath string
+				if isTildePath {
+					// Need to convert back to ~ format for the user
+					userPath := strings.Replace(dir, homeDir, "~", 1)
+					completedPath = userPath + "/" + completionName
+				} else {
+					completedPath = dir + "/" + completionName	
+				}
+				suffix = completedPath[len(originalPartialForSuffix):]
 			}
 
 			matches = append(matches, []rune(suffix))
