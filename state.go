@@ -18,8 +18,8 @@ type ShellState struct {
 	ExitCode         int
 	CurrentProcess   *os.Process
 	// Cached prompt to avoid expensive color rendering
-	cachedPrompt     string
-	promptHash       string  // Content hash to detect changes
+	cachedPrompt string
+	promptHash   string // Content hash to detect changes
 }
 
 func NewShellState() *ShellState {
@@ -57,19 +57,19 @@ func (s *ShellState) EnvironmentSlice() []string {
 func (s *ShellState) GetPrompt() string {
 	// Create a hash of the current state to detect changes
 	stateHash := s.createPromptHash()
-	
+
 	// Return cached prompt if nothing changed
 	if s.promptHash == stateHash && s.cachedPrompt != "" {
 		return s.cachedPrompt
 	}
-	
+
 	// Generate new prompt
 	newPrompt := s.generatePromptWithColors()
-	
+
 	// Cache it
 	s.cachedPrompt = newPrompt
 	s.promptHash = stateHash
-	
+
 	return newPrompt
 }
 
@@ -77,7 +77,7 @@ func (s *ShellState) GetPrompt() string {
 func (s *ShellState) createPromptHash() string {
 	hash := md5.New()
 	hash.Write([]byte(s.WorkingDirectory))
-	
+
 	// Add git branch if in a git repo
 	if isInGitRepo(s.WorkingDirectory) {
 		cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
@@ -86,13 +86,16 @@ func (s *ShellState) createPromptHash() string {
 			hash.Write(output)
 		}
 	}
-	
+
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
 // generatePromptWithColors creates the actual colored prompt
 func (s *ShellState) generatePromptWithColors() string {
 	colors := GetColorManager()
+	
+	// Force color manager to refresh with latest theme
+	colors.ForceRefresh()
 	dir := s.WorkingDirectory
 	home := s.Environment["HOME"]
 
@@ -109,12 +112,15 @@ func (s *ShellState) generatePromptWithColors() string {
 		output, err := cmd.Output()
 		if err == nil {
 			branchName := strings.TrimSpace(string(output))
-			gitBranch = colors.StylePrompt(fmt.Sprintf("git:(%s)", branchName), "git-branch")
+			
+			gitPrefix := colors.StylePrompt("git:", "git_prefix")
+			styledBranch := colors.StylePrompt(branchName, "git_branch")
+			gitBranch = fmt.Sprintf("%s(%s)", gitPrefix, styledBranch)
 		}
 	}
 
 	// Style prompt symbols
-	symbol := colors.StylePrompt(">", "symbol")
+	symbol := colors.StylePrompt("> ", "symbol")
 	space := colors.StylePrompt(" ", "separator")
 
 	return fmt.Sprintf("%s%s%s%s%s", styledDir, space, gitBranch, space, symbol)
@@ -122,7 +128,7 @@ func (s *ShellState) generatePromptWithColors() string {
 
 // ForcePromptRefresh can be called when we know the prompt should be updated
 func (s *ShellState) ForcePromptRefresh() {
-	s.promptHash = ""  // Clear hash to force refresh
+	s.promptHash = "" // Clear hash to force refresh
 }
 
 // ExpandPath handles ~, environment variables, and path normalization

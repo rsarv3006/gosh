@@ -12,10 +12,11 @@ import (
 
 // Color configuration structures
 type PromptColors struct {
-	Directory string `json:"directory"`
-	GitBranch string `json:"git_branch"`
-	Separator string `json:"separator"`
-	Symbol    string `json:"symbol"`
+	Directory  string `json:"directory"`
+	GitPrefix   string `json:"git_prefix"`   // "git:" part
+	GitBranch  string `json:"git_branch"`  // branch name only
+	Separator  string `json:"separator"`
+	Symbol     string `json:"symbol"`
 }
 
 type OutputColors struct {
@@ -43,30 +44,32 @@ var builtinThemes = map[string]ColorTheme{
 	"dark": {
 		Name: "dark",
 		Prompt: PromptColors{
-			Directory: "#00bcd4", // Cyan
-			GitBranch: "#4fc3f7", // Light blue
-			Separator: "#607d8b", // Blue gray
-			Symbol:    "#ffc107", // Amber
+			Directory: "#00ff41", // Bright green
+			GitPrefix: "#e74c3c",  // Bright red
+			GitBranch: "#3498db", // Bold blue
+			Separator: "#95a5a6",  // Silver
+			Symbol:    "#ffd43b", // Bright yellow
 		},
 		Output: OutputColors{
-			Success: "#4caf50", // Green
-			Error:   "#f44336", // Red
-			Info:    "#2196f3", // Blue
+			Success: "#4ade80", // Bright green
+			Error:   "#f87171", // Bright red
+			Info:    "#60a5fa", // Bright blue
 			Result:  "#ffffff", // White
 		},
 		Messages: MessageColors{
-			Welcome: "#ff9800", // Orange
-			Config:  "#9c27b0", // Purple
-			Help:    "#607d8b", // Blue gray
+			Welcome: "#fbbf24", // Amber
+			Config:  "#a78bfa", // Purple
+			Help:    "#94a3b8", // Slate
 		},
 	},
 	"light": {
 		Name: "light",
 		Prompt: PromptColors{
-			Directory: "#1976d2", // Blue
-			GitBranch: "#0288d1", // Darker blue
-			Separator: "#757575", // Gray
-			Symbol:    "#f57c00", // Dark orange
+			Directory: "#1e40af", // Dark blue
+			GitPrefix:  "#dc2626", // Dark red
+			GitBranch:  "#7c3aed", // Dark purple
+			Separator: "#6b7280", // Medium gray
+			Symbol:     "#d97706", // Dark amber
 		},
 		Output: OutputColors{
 			Success: "#388e3c", // Dark green
@@ -84,9 +87,10 @@ var builtinThemes = map[string]ColorTheme{
 		Name: "mono",
 		Prompt: PromptColors{
 			Directory: "",  // No color
-			GitBranch: "", // No color
-			Separator: "", // No color
-			Symbol:    "", // No color
+			GitPrefix:  "", // No color
+			GitBranch:  "", // No color
+			Separator:  "", // No color
+			Symbol:     "", // No color
 		},
 		Output: OutputColors{
 			Success: "", // No color
@@ -104,9 +108,10 @@ var builtinThemes = map[string]ColorTheme{
 		Name: "solarized",
 		Prompt: PromptColors{
 			Directory: "#268bd2", // Solarized blue
-			GitBranch: "#2aa198", // Solarized cyan
+			GitPrefix:  "#cb4b16", // Solarized orange
+			GitBranch:  "#859900", // Solarized green
 			Separator: "#586e75", // Solarized base01
-			Symbol:    "#b58900", // Solarized yellow
+			Symbol:     "#b58900", // Solarized yellow
 		},
 		Output: OutputColors{
 			Success: "#859900", // Solarized green
@@ -153,22 +158,9 @@ func shouldUseNoColor() bool {
 		return true
 	}
 	
-	// Check if stdout is not a TTY
-	if !isTerminal() {
-		return true
-	}
-	
+	// Always enable colors for interactive REPL sessions
+	// The REPL is designed to be colorful regardless of TTY status
 	return false
-}
-
-// isTerminal checks if stdout is a terminal
-func isTerminal() bool {
-	// Simple check - in a real implementation you might use more sophisticated detection
-	stat, err := os.Stdout.Stat()
-	if err != nil {
-		return false
-	}
-	return (stat.Mode() & os.ModeCharDevice) != 0
 }
 
 // SetColorTheme sets the current color theme
@@ -184,6 +176,9 @@ func SetColorTheme(theme interface{}) {
 			colorManager.theme = presetTheme
 			colorManager.currentName = t
 		}
+		
+		// Force refresh of prompt colors
+		colorManager.ForceRefresh()
 		
 		// Try dynamic theme creation with hex colors for presets that aren't built-in
 		switch t {
@@ -211,7 +206,9 @@ func SetPromptColor(component, color string) {
 	switch strings.ToLower(component) {
 	case "directory", "dir":
 		colorManager.theme.Prompt.Directory = color
-	case "git-branch", "git":
+	case "git-prefix", "git":
+		colorManager.theme.Prompt.GitPrefix = color
+	case "git-branch", "branch":
 		colorManager.theme.Prompt.GitBranch = color
 	case "separator", "sep":
 		colorManager.theme.Prompt.Separator = color
@@ -247,7 +244,9 @@ func (cm *ColorManager) StylePrompt(text, component string) string {
 	switch component {
 	case "directory":
 		color = cm.theme.Prompt.Directory
-	case "git-branch":
+	case "git_prefix":
+		color = cm.theme.Prompt.GitPrefix
+	case "git_branch":
 		color = cm.theme.Prompt.GitBranch
 	case "separator":
 		color = cm.theme.Prompt.Separator
@@ -341,6 +340,12 @@ func GetColorManagerSafe() *ColorManager {
 	return colorManager
 }
 
+// ForceRefresh forces the color manager to clear any caches
+func (cm *ColorManager) ForceRefresh() {
+	// For now, this doesn't do much but ensures we have the method
+	// In the future this could clear lipgloss style caches if needed
+}
+
 // ListThemes returns available theme names
 func ListThemes() []string {
 	themes := make([]string, 0, len(builtinThemes))
@@ -368,6 +373,7 @@ func PrintCurrentTheme() {
 	fmt.Printf("Current theme: %s\n", theme.Name)
 	fmt.Printf("Prompt Colors:\n")
 	fmt.Printf("  Directory: %s\n", theme.Prompt.Directory)
+	fmt.Printf("  GitPrefix: %s\n", theme.Prompt.GitPrefix)
 	fmt.Printf("  GitBranch: %s\n", theme.Prompt.GitBranch)
 	fmt.Printf("  Separator: %s\n", theme.Prompt.Separator)
 	fmt.Printf("  Symbol: %s\n", theme.Prompt.Symbol)
@@ -393,6 +399,7 @@ func ExportTheme() string {
 	Name: "%s",
 	Prompt: PromptColors{
 		Directory: "%s",
+		GitPrefix: "%s",
 		GitBranch: "%s",
 		Separator: "%s",
 		Symbol:    "%s",
@@ -409,7 +416,7 @@ func ExportTheme() string {
 		Help:    "%s",
 	},
 }`, theme.Name,
-		theme.Prompt.Directory, theme.Prompt.GitBranch, theme.Prompt.Separator, theme.Prompt.Symbol,
+		theme.Prompt.Directory, theme.Prompt.GitPrefix, theme.Prompt.GitBranch, theme.Prompt.Separator, theme.Prompt.Symbol,
 		theme.Output.Success, theme.Output.Error, theme.Output.Info, theme.Output.Result,
 		theme.Messages.Welcome, theme.Messages.Config, theme.Messages.Help)
 }
@@ -420,9 +427,10 @@ func createLightTheme() ColorTheme {
 		Name: "light",
 		Prompt: PromptColors{
 			Directory: "#1976d2",
-			GitBranch: "#0288d1",
-			Separator: "#757575",
-			Symbol:    "#f57c00",
+			GitPrefix: "#dc2626",
+			GitBranch: "#7c3aed",
+			Separator: "#6b7280",
+			Symbol:    "#d97706",
 		},
 		Output: OutputColors{
 			Success: "#388e3c",
@@ -444,6 +452,7 @@ func createMonoTheme() ColorTheme {
 		Name: "mono",
 		Prompt: PromptColors{
 			Directory: "",
+			GitPrefix: "",
 			GitBranch: "",
 			Separator: "",
 			Symbol:    "",
