@@ -165,8 +165,22 @@ func (g *GoEvaluator) Eval(code string) ExecutionResult {
 	os.Stdout = w
 	os.Stderr = w
 
-	// Evaluate the code
-	result, err := g.interp.Eval(processedCode)
+	// Evaluate the code with panic recovery
+	var result reflect.Value
+	var err error
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				// Convert panic to error
+				if e, ok := r.(error); ok {
+					err = e
+				} else {
+					err = fmt.Errorf("yaegi evaluation panic: %v", r)
+				}
+			}
+		}()
+		result, err = g.interp.Eval(processedCode)
+	}()
 
 	// Restore stdout/stderr and close write end
 	os.Stdout = oldStdout
@@ -227,7 +241,14 @@ func (g *GoEvaluator) Eval(code string) ExecutionResult {
 		exitCode = 1
 		// Only add error to output if we don't already have output
 		if output == "" {
-			output = err.Error()
+			// Provide a cleaner error message for yaegi panics
+			if strings.Contains(err.Error(), "CFG post-order panic") {
+				output = "Go syntax error: function return type mismatch"
+			} else if strings.Contains(err.Error(), "yaegi evaluation panic") {
+				output = "Go syntax error: invalid Go code"
+			} else {
+				output = err.Error()
+			}
 		}
 	}
 

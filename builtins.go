@@ -82,9 +82,6 @@ func (b *BuiltinHandler) cd(args []string) ExecutionResult {
 	}
 
 	b.state.WorkingDirectory = expanded
-	
-	// Force prompt refresh since directory changed
-	b.state.ForcePromptRefresh()
 
 	return ExecutionResult{
 		Output:   "",
