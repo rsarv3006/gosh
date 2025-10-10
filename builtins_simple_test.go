@@ -282,11 +282,18 @@ func TestBuiltinHandler_Execute_UnkownCommand(t *testing.T) {
 }
 
 func TestBuiltinHandler_ExpandPath(t *testing.T) {
+	// Create a temporary directory to use as fake home
+	tempDir, err := os.MkdirTemp("", "gosh-test-home")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
 	// This is indirect testing through cd functionality
 	state := &ShellState{
 		WorkingDirectory: "/some/dir",
 		Environment: map[string]string{
-			"HOME": "/home/user",
+			"HOME": tempDir,
 		},
 	}
 	handler := NewBuiltinHandler(state)
@@ -297,7 +304,7 @@ func TestBuiltinHandler_ExpandPath(t *testing.T) {
 		t.Errorf("cd ~ should work, got error: %v", result.Error)
 	}
 	
-	if state.WorkingDirectory != "/home/user" {
-		t.Errorf("cd ~ should expand to /home/user, got %q", state.WorkingDirectory)
+	if state.WorkingDirectory != tempDir {
+		t.Errorf("cd ~ should expand to %s, got %q", tempDir, state.WorkingDirectory)
 	}
 }
