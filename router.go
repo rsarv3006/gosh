@@ -35,7 +35,12 @@ func (r *Router) Route(input string) (InputType, string, []string) {
 		return InputTypeBuiltin, command, args
 	}
 
-	// Check if it looks like a shell command first
+	// Check for Go syntax patterns FIRST - these should always go to Go evaluation
+	if r.looksLikeGoCode(input) {
+		return InputTypeGo, input, nil
+	}
+
+	// Check if it looks like a shell command
 	if r.looksLikeShellCommand(input) {
 		return InputTypeCommand, command, args
 	}
@@ -118,12 +123,69 @@ func (r *Router) looksLikeShellCommand(input string) bool {
 		return false // These are Go patterns
 	}
 	
-	// Single word with no obvious Go syntax, try as command first
-	if !strings.ContainsAny(input, "|><") {
-		return true // Try as command first, fallback to Go if not in PATH
+	// If it looks like a shell command but is NOT in PATH, let it fall back to Go
+	return false
+}
+
+// looksLikeGoCode checks if the input looks like Go code that should be evaluated
+func (r *Router) looksLikeGoCode(input string) bool {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return false
+	}
+
+	// Check for Go-specific patterns that clearly indicate Go code
+	
+	// Function definitions
+	if strings.HasPrefix(input, "func ") {
+		return true
 	}
 	
-	// Default to false (let it fall back to Go)
+	// Go keywords that indicate Go code
+	goKeywords := []string{
+		"var ", "const ", "type ", "import ", "package ",
+		"if ", "else", "for ", "switch ", "select ", "case ", "default ",
+		"defer ", "go ", "return ", "break ", "continue ", "fallthrough ",
+		"struct ", "interface ", "map ", "chan ",
+	}
+	
+	for _, keyword := range goKeywords {
+		if strings.HasPrefix(input, keyword) {
+			return true
+		}
+	}
+	
+	// Check if input contains Go syntax patterns that aren't typical shell
+	// (but be careful not to over-match shell commands that use similar syntax)
+	
+	// Type declarations with Go syntax
+	if strings.Contains(input, ":=") && !strings.Contains(input, "$(") {
+		return true
+	}
+	
+	// Go-specific syntax patterns
+	if strings.ContainsAny(input, "{}()") && 
+	   !strings.Contains(input, "|") && 
+	   !strings.Contains(input, ">") && 
+	   !strings.Contains(input, "<") {
+		// Contains Go braces/parentheses but not typical shell operators
+		return true
+	}
+	
+	// Go types (common patterns)
+	goTypes := []string{
+		" string ", " int ", " bool ", " float64 ", " float32 ",
+		" byte ", " rune ", " error ", " interface{} ",
+		" int8 ", " int16 ", " int32 ", " int64 ",
+		" uint8 ", " uint16 ", " uint32 ", " uint64 ",
+	}
+	
+	for _, goType := range goTypes {
+		if strings.Contains(input, goType) {
+			return true
+		}
+	}
+	
 	return false
 }
 
