@@ -57,6 +57,10 @@ func (g *GoshCompleter) Do(line []rune, pos int) (newLine [][]rune, length int) 
 func (g *GoshCompleter) completeCommands(partial string) [][]rune {
 	var matches [][]rune
 
+	if partial == "" {
+		return matches // Return empty matches list
+	}
+
 	// Commands to complete
 	commands := []string{
 		"cd", "pwd", "exit", "help",

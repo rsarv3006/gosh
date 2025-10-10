@@ -9,6 +9,60 @@ import (
 	"testing"
 )
 
+func TestGoshCompleter_completeCommands_InvalidInput(t *testing.T) {
+	c := NewGoshCompleter()
+
+	// Empty input should return no matches
+	result, length := c.Do([]rune(""), 0)
+	
+	if len(result) != 0 {
+		t.Errorf("Expected no matches for empty input")
+	}
+	
+	if length != 0 {
+		t.Errorf("Expected length 0 for empty input, got %d", length)
+	}
+}
+
+func TestGoshCompleter_completeCommands_NonexistentCommand(t *testing.T) {
+	c := NewGoshCompleter()
+	
+	// Non-existent command should return no matches
+	result, _ := c.Do([]rune("nonexistent_command"), 18)
+	
+	if len(result) != 0 {
+		t.Errorf("Expected no matches for non-existent command")
+	}
+}
+
+func TestGoshCompleter_completeCommands_ExactMatch(t *testing.T) {
+	c := NewGoshCompleter()
+	
+	// Exact command should return empty suffix
+	result, _ := c.Do([]rune("pwd"), 3)
+	
+	if len(result) != 1 {
+		t.Errorf("Expected 1 match for exact match, got %d", len(result))
+	}
+	
+	if string(result[0]) != "" {
+		t.Errorf("Expected empty suffix for exact match, got %q", string(result[0]))
+	}
+}
+
+func TestGoshCompleter_completeCommands_WithMultiple(t *testing.T) {
+	c := NewGoshCompleter()
+	
+	// Partial that matches multiple commands
+	result, _ := c.Do([]rune("c"), 1)
+	
+	// Should return multiple matches for 'c' (cd, cat, const)
+	expectedMatches := 3 // cd, cat, const
+	if len(result) != expectedMatches {
+		t.Errorf("Expected %d matches for 'c', got %d", expectedMatches, len(result))
+	}
+}
+
 func TestGoshCompleter_Do_CommandCompletion(t *testing.T) {
 	c := NewGoshCompleterForTesting()
 
