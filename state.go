@@ -36,12 +36,18 @@ func NewShellState() *ShellState {
 		}
 	}
 
-	return &ShellState{
+	state := &ShellState{
 		WorkingDirectory: wd,
 		Environment:      env,
 		ExitCode:         0,
 		CurrentProcess:   nil,
 	}
+
+	// Initialize hybrid environment strategy
+	envManager := NewEnvironmentManager(state)
+	envManager.InitializeEnvironment()
+
+	return state
 }
 
 func (s *ShellState) EnvironmentSlice() []string {

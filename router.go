@@ -141,16 +141,25 @@ func (r *Router) looksLikeGoCode(input string) bool {
 		return true
 	}
 	
-	// Go keywords that indicate Go code
+	// Go keywords that indicate Go code (excluding when used as shell commands)
 	goKeywords := []string{
 		"var ", "const ", "type ", "import ", "package ",
 		"if ", "else", "for ", "switch ", "select ", "case ", "default ",
-		"defer ", "go ", "return ", "break ", "continue ", "fallthrough ",
+		"defer ", "return ", "break ", "continue ", "fallthrough ",
 		"struct ", "interface ", "map ", "chan ",
+		"go ", // for 'go func(){}', 'go fmt.Println()', etc.
 	}
 	
 	for _, keyword := range goKeywords {
 		if strings.HasPrefix(input, keyword) {
+			// Special case: 'go' should only trigger if it's not the first word (not a command)
+			if keyword == "go " {
+				words := strings.Fields(input)
+				if len(words) > 0 && words[0] == "go" {
+					// 'go' is the first word, treat as shell command
+					continue
+				}
+			}
 			return true
 		}
 	}

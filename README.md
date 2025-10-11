@@ -87,11 +87,31 @@ Config loaded successfully!
 User: rjs
 ```
 
-### Configuration - config.go
+### Configuration - Hybrid Environment Strategy
 
-gosh supports a `config.go` file for shell customization. Create a regular Go file at:
+gosh uses a **dual-layer configuration approach** that gives you the best of both worlds: standard shell compatibility plus Go-powered extensions.
 
-1. `./config.go` (current directory, takes precedence)
+#### Layer 1: Standard Shell Environment (`env.go`)
+
+**Automatic Standard Config Loading:**
+- Loads regular shell configs when run as login shell
+- Supports: `.bash_profile`, `.zprofile`, `.profile`, `.bash_login`, `.login`
+- Full POSIX environment inheritance
+- Shell variable expansion `$HOME`, `$PATH`, `$GOPATH`
+
+**Example .bash_profile**
+```bash
+# Your existing shell configs just work!
+export PATH="/opt/homebrew/bin:$PATH"
+export GOPATH="$HOME/go"
+export EDITOR="vim"
+export JAVA_HOME="/usr/local/opt/openjdk"
+```
+
+#### Layer 2: Go-Powered Extensions (`config.go`)
+
+Create a Go file for shell customization at:
+1. `./config.go` (current directory, takes precedence)  
 2. `~/.config/gosh/config.go` (home directory, fallback)
 
 ```go
@@ -101,15 +121,16 @@ package main
 import (
     "fmt"
     "os"
+    "strings"
 )
 
-// Runs on shell startup
+// Runs on shell startup - Go-powered initialization
 func init() {
-    fmt.Println("Loading custom config...")
-    os.Setenv("EDITOR", "vim")
+    fmt.Println("Welcome to gosh!")
+    os.Setenv("GOSH_USER", os.Getenv("USER"))
 }
 
-// Functions persist throughout the shell session
+// Custom functions that persist throughout the shell session
 func hello(name string) {
     fmt.Printf("Hello %s! Welcome to gosh!\n", name)
 }
@@ -119,20 +140,67 @@ func info() {
     fmt.Printf("User: %s\n", os.Getenv("GOSH_USER"))
 }
 
-// Custom prompt example (when implemented)
+// Go-powered utilities - things you can't do in bash!
+func smartLs() {
+    // Custom ls with Go logic, filtering, sorting, etc.
+}
+
+func gitSummary() {
+    // Git status parsing with Go packages
+}
+
+// Custom prompt extension (when implemented)
 func CustomPrompt() string {
     return fmt.Sprintf("gosh[%s]$ ", 
         strings.TrimPrefix(os.Getenv("PWD"), os.Getenv("HOME")))
 }
 ```
 
-**Features:**
-- ✅ Full Go syntax with IDE support (LSP, treesitter, autocomplete)
-- ✅ Functions and variables persist in shell REPL
-- ✅ Environment variables set during startup
-- ✅ Common packages (fmt, os, strings, etc.) already imported
-- ✅ Additional imports handled automatically
-- ✅ Use `init()` for startup configuration
+#### Environment Layer Benefits
+
+**Standard Shell Features:**
+- ✅ `export VAR=value` syntax (no learning curve)
+- ✅ Supports your existing `.bash_profile` / `.zprofile`
+- ✅ Traditional environment variable management
+- ✅ Shell variable expansion in commands: `echo $HOME`
+
+**Go Extension Features:**
+- ✅ Full Go language for custom shell functions
+- ✅ Access to all Go packages and types
+- ✅ Better error handling and debugging
+- ✅ Cross-platform compatibility
+- ✅ IDE support with LSP and autocomplete
+- ✅ Persistent state across shell session
+
+#### Usage Examples
+
+```bash
+# Standard shell commands work exactly as expected
+gosh> echo $HOME
+/Users/rjs
+gosh> echo $GOPATH
+/Users/rjs/go
+gosh> go install github.com/kubernetes/kompose@latest
+# ✅ Works because GOPATH is properly set and shell variables expand
+
+# Go-powered extensions are available too
+gosh> hello("world")
+Hello world! Welcome to gosh!
+gosh> gitSummary()
+[GIT STATUS WITH CUSTOM GO LOGIC]
+
+# Mix standard shell and Go code seamlessly
+gosh> files := $(ls)  # Command substitution
+gosh> fmt.Println("Found", len(strings.Split(files, "\n")), "files")
+Found 12 files
+```
+
+**The hybrid approach means you get:**
+- Zero learning curve for basic shell usage
+- Standard POSIX environment behavior
+- Your existing shell configs work automatically  
+- Go superpowers when you need them
+- No custom environment syntax to learn
 
 ## Architecture
 
@@ -263,13 +331,14 @@ go build
 - ✅ Command execution with proper signal handling
 - ✅ Built-ins (cd, exit, pwd, help)
 - ✅ Command substitution `$(command)` syntax
-- ✅ Path expansion and environment variable handling
+- ✅ Hybrid environment strategy (standard shell + Go extensions)
 - ✅ Smart routing between Go code and shell commands
 - ✅ Proper Ctrl+C interrupt handling
 - ✅ Clean architecture with separated concerns
 
 **🎯 Phase 2 Complete**:
 
+- [x] Hybrid environment system (standard shell configs + Go extensions) ✅
 - [x] Config file support (config.go) ✅
 - [x] Tab completion for commands and file paths ✅
 - [x] Color system with theme support ✅

@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 type ProcessSpawner struct {
@@ -56,7 +57,13 @@ func (p *ProcessSpawner) Execute(command string, args []string) ExecutionResult 
 
 // ExecuteInteractive runs a command with direct terminal access
 func (p *ProcessSpawner) ExecuteInteractive(command string, args []string) ExecutionResult {
-	cmd := exec.Command(command, args...)
+	// Expand shell variables in arguments
+	expandedArgs := make([]string, len(args))
+	for i, arg := range args {
+		expandedArgs[i] = p.expandShellVariables(arg)
+	}
+	
+	cmd := exec.Command(command, expandedArgs...)
 	cmd.Dir = p.state.WorkingDirectory
 	cmd.Env = p.state.EnvironmentSlice()
 	cmd.Stdin = os.Stdin
@@ -94,6 +101,21 @@ func (p *ProcessSpawner) ExecuteInteractive(command string, args []string) Execu
 		ExitCode: exitCode,
 		Error:    err,
 	}
+}
+
+// expandShellVariables expands shell variables like $HOME, $GOPATH, etc.
+func (p *ProcessSpawner) expandShellVariables(input string) string {
+	result := input
+	
+	// Expand all variables from environment
+	for key, value := range p.state.Environment {
+		varPattern := "$" + key
+		if strings.Contains(result, varPattern) {
+			result = strings.ReplaceAll(result, varPattern, value)
+		}
+	}
+	
+	return result
 }
 
 // FindInPath checks if a command exists in PATH
