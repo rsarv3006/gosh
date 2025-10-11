@@ -29,8 +29,8 @@
 ## Quick Start
 
 ```bash
-# Install
-go install github.com/rsarv3006/gosh@latest
+# Install the current MVP release
+go install github.com/rsarv3006/gosh@v0.0.1
 
 # Run
 gosh
