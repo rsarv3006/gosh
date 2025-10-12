@@ -14,7 +14,7 @@ import (
 )
 
 func RunREPL(state *ShellState, evaluator *GoEvaluator, spawner *ProcessSpawner, builtins *BuiltinHandler) error {
-	router := NewRouter(builtins)
+	router := NewRouter(builtins, state)
 
 	// Setup readline with multiline support
 	rl, err := readline.NewEx(&readline.Config{
@@ -78,7 +78,7 @@ func RunREPL(state *ShellState, evaluator *GoEvaluator, spawner *ProcessSpawner,
 
 		case InputTypeCommand:
 			// Check if command exists
-			if _, found := FindInPath(command); !found {
+			if _, found := FindInPath(command, state.Environment["PATH"]); !found {
 				result = ExecutionResult{
 					Output:   fmt.Sprintf("gosh: command not found: %s", command),
 					ExitCode: 127,

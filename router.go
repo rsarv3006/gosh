@@ -9,10 +9,11 @@ import (
 
 type Router struct {
 	builtins *BuiltinHandler
+	state    *ShellState
 }
 
-func NewRouter(builtins *BuiltinHandler) *Router {
-	return &Router{builtins: builtins}
+func NewRouter(builtins *BuiltinHandler, state *ShellState) *Router {
+	return &Router{builtins: builtins, state: state}
 }
 
 // Route determines what to do with the input
@@ -22,27 +23,29 @@ func (r *Router) Route(input string) (InputType, string, []string) {
 		return InputTypeCommand, "", nil
 	}
 
+	// Parse into command and args
+	command, args := r.parseInput(input)
+
+	
+
 	// Check for command substitution $(command)
 	if r.hasCommandSubstitution(input) {
 		return InputTypeGo, input, nil
 	}
-
-	// Parse into command and args
-	command, args := r.parseInput(input)
 
 	// Check builtins first
 	if r.builtins.IsBuiltin(command) {
 		return InputTypeBuiltin, command, args
 	}
 
-	// Check for Go syntax patterns FIRST - these should always go to Go evaluation
-	if r.looksLikeGoCode(input) {
-		return InputTypeGo, input, nil
-	}
-
 	// Check if it looks like a shell command
 	if r.looksLikeShellCommand(input) {
 		return InputTypeCommand, command, args
+	}
+
+	// Check for Go syntax patterns BEFORE fallback
+	if r.looksLikeGoCode(input) {
+		return InputTypeGo, input, nil
 	}
 
 	// Default to Go evaluation - safer fallback
@@ -93,7 +96,7 @@ func (r *Router) looksLikeShellCommand(input string) bool {
 	command, args := r.parseInput(input)
 	
 	// If first word is in PATH, it's definitely a command
-	if _, found := FindInPath(command); found {
+	if _, found := FindInPath(command, r.state.Environment["PATH"]); found {
 		return true
 	}
 	

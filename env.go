@@ -31,18 +31,13 @@ func (em *EnvironmentManager) InitializeEnvironment() {
 
 // isLoginShell checks if we're running as a login shell
 func (em *EnvironmentManager) isLoginShell() bool {
-	// Check common login shell indicators
-	if os.Getenv("SHLVL") == "1" {
-		return true
-	}
-
 	// Check if we're process 1 or have login name in argv[0]
 	if len(os.Args) > 0 && strings.HasPrefix(filepath.Base(os.Args[0]), "-") {
 		return true
 	}
 
-	// Check for login-specific environment variables
-	if os.Getenv("LOGIN") == "true" || os.Getenv("PS1") != "" && os.Getenv("PWD") == os.Getenv("HOME") {
+	// Check for explicit login flag
+	if os.Getenv("LOGIN") == "true" {
 		return true
 	}
 
@@ -174,9 +169,10 @@ func (em *EnvironmentManager) ensureCriticalEnvVars() {
 		"USER":     os.Getenv("USER"),
 		"LANG":     "en_US.UTF-8",
 		"TERM":     "xterm-256color",
-		"PATH":     "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
 		"SHELL":    "/bin/bash", // Fallback
 	}
+
+	// NOTE: We DON'T set default PATH here to avoid overriding inherited PATH
 
 	for varName, defaultValue := range criticalVars {
 		if em.state.Environment[varName] == "" {
@@ -196,6 +192,16 @@ func (em *EnvironmentManager) ensureCriticalEnvVars() {
 
 // ensureGoEnvironment sets up Go-specific environment
 func (em *EnvironmentManager) ensureGoEnvironment() {
+	// WORKAROUND: Add missing local bin directory if not present
+	home := em.state.Environment["HOME"]
+	if home != "" {
+		localBin := filepath.Join(home, ".local", "bin")
+		path := em.state.Environment["PATH"]
+		if !strings.Contains(path, localBin) {
+			em.state.Environment["PATH"] = localBin + ":" + path
+		}
+	}
+
 	// GOPATH
 	if em.state.Environment["GOPATH"] == "" {
 		if gopath := os.Getenv("GOPATH"); gopath != "" {
@@ -224,23 +230,6 @@ func (em *EnvironmentManager) ensureGoEnvironment() {
 		path := em.state.Environment["PATH"]
 		if !strings.Contains(path, goBin) {
 			em.state.Environment["PATH"] = goBin + ":" + path
-		}
-	}
-
-	// System Go installation
-	systemGoPaths := []string{
-		"/usr/local/go/bin",
-		"/opt/homebrew/bin",
-		"/usr/bin",
-	}
-
-	path := em.state.Environment["PATH"]
-	for _, goPath := range systemGoPaths {
-		if _, err := os.Stat(goPath + "/go"); err == nil {
-			if !strings.Contains(path, goPath) {
-				em.state.Environment["PATH"] = goPath + ":" + path
-			}
-			break
 		}
 	}
 }

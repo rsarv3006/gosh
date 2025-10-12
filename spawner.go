@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -57,21 +58,33 @@ func (p *ProcessSpawner) Execute(command string, args []string) ExecutionResult 
 
 // ExecuteInteractive runs a command with direct terminal access
 func (p *ProcessSpawner) ExecuteInteractive(command string, args []string) ExecutionResult {
+	
+
 	// Expand shell variables in arguments
 	expandedArgs := make([]string, len(args))
 	for i, arg := range args {
 		expandedArgs[i] = p.expandShellVariables(arg)
 	}
 	
-	cmd := exec.Command(command, expandedArgs...)
+	// Use full path if available, otherwise fall back to command name
+	commandPath := command
+	if fullPath, found := FindInPath(command, p.state.Environment["PATH"]); found {
+		commandPath = fullPath
+		
+	}
+	
+	cmd := exec.Command(commandPath, expandedArgs...)
 	cmd.Dir = p.state.WorkingDirectory
 	cmd.Env = p.state.EnvironmentSlice()
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
+	
+
 	err := cmd.Start()
 	if err != nil {
+		
 		return ExecutionResult{
 			Output:   "",
 			ExitCode: 1,
@@ -86,6 +99,8 @@ func (p *ProcessSpawner) ExecuteInteractive(command string, args []string) Execu
 	}()
 
 	err = cmd.Wait()
+
+	
 
 	exitCode := 0
 	if err != nil {
@@ -118,8 +133,23 @@ func (p *ProcessSpawner) expandShellVariables(input string) string {
 	return result
 }
 
-// FindInPath checks if a command exists in PATH
-func FindInPath(command string) (string, bool) {
-	path, err := exec.LookPath(command)
-	return path, err == nil
+// FindInPath checks if a command exists in current shell state PATH
+func FindInPath(command string, pathEnv string) (string, bool) {
+	// Use the provided PATH environment
+	if pathEnv == "" {
+		pathEnv = "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+	}
+
+	// Search each directory in PATH
+	for _, dir := range strings.Split(pathEnv, ":") {
+		if dir == "" {
+			continue
+		}
+		fullPath := filepath.Join(dir, command)
+		if _, err := os.Stat(fullPath); err == nil {
+			return fullPath, true
+		}
+	}
+
+	return "", false
 }

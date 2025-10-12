@@ -326,7 +326,7 @@ func (b *BuiltinHandler) help(args []string) ExecutionResult {
 	}
 	
 	// Check if it's a shell command
-	if path, found := FindInPath(command); found {
+	if path, found := FindInPath(command, b.state.Environment["PATH"]); found {
 		return ExecutionResult{
 			Output: fmt.Sprintf("%s - External Command\n\n"+
 				"This is an external command. Use \"man %s\" for detailed documentation,\n"+
