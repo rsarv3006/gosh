@@ -55,8 +55,11 @@ func (em *EnvironmentManager) loadLoginShellConfigs() {
 		return
 	}
 
-	// Standard config files in order of preference
-	configFiles := []string{
+	// Load system-wide configs first
+	em.loadSystemConfigs()
+
+	// Standard login config files in order of preference
+	loginConfigs := []string{
 		".bash_profile", // Bash login shell
 		".bash_login",   // Fallback for bash
 		".profile",      // POSIX standard
@@ -64,10 +67,47 @@ func (em *EnvironmentManager) loadLoginShellConfigs() {
 		".login",        // Classic csh/sh login script
 	}
 
-	for _, configFile := range configFiles {
+	// Load login configs
+	for _, configFile := range loginConfigs {
 		fullPath := filepath.Join(home, configFile)
 		if _, err := os.Stat(fullPath); err == nil {
 			em.loadShellConfigFile(fullPath)
+		}
+	}
+
+	// Also load interactive configs (for PATH and aliases)
+	em.loadInteractiveConfigs(home)
+}
+
+// loadInteractiveConfigs loads interactive shell configs
+func (em *EnvironmentManager) loadInteractiveConfigs(home string) {
+	// Interactive configs typically contain PATH setup and aliases
+	interactiveConfigs := []string{
+		".zshrc",        // Zsh interactive
+		".bashrc",       // Bash interactive
+		".bash_aliases", // Bash aliases
+	}
+
+	for _, configFile := range interactiveConfigs {
+		fullPath := filepath.Join(home, configFile)
+		if _, err := os.Stat(fullPath); err == nil {
+			em.loadShellConfigFile(fullPath)
+		}
+	}
+}
+
+// loadSystemConfigs loads system-wide shell configurations
+func (em *EnvironmentManager) loadSystemConfigs() {
+	systemConfigs := []string{
+		"/etc/zprofile",   // Zsh system-wide login
+		"/etc/profile",    // POSIX system-wide login
+		"/etc/bashrc",     // Bash system-wide interactive
+		"/etc/zshrc",      // Zsh system-wide interactive
+	}
+
+	for _, configPath := range systemConfigs {
+		if _, err := os.Stat(configPath); err == nil {
+			em.loadShellConfigFile(configPath)
 		}
 	}
 }
@@ -158,7 +198,16 @@ func (em *EnvironmentManager) expandVariables(input string) string {
 // inheritFromParentShell cleans up environment inheritance
 func (em *EnvironmentManager) inheritFromParentShell() {
 	// Environment is already captured in NewShellState()
-	// Just need to ensure critical variables are present
+	// Try to load interactive configs to get PATH and aliases
+	home := os.Getenv("HOME")
+	if home == "" {
+		home = em.state.Environment["HOME"]
+	}
+	if home != "" {
+		em.loadInteractiveConfigs(home)
+	}
+	
+	// Ensure critical variables are present
 	em.ensureCriticalEnvVars()
 }
 
