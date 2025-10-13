@@ -28,6 +28,24 @@
 
 ## Quick Start
 
+### Homebrew (Recommended)
+
+```bash
+# Install via homebrew tap
+brew install rsarv3006/gosh/gosh
+
+# Add to system shells (optional, to use as login shell)
+echo '/opt/homebrew/bin/gosh' | sudo tee -a /etc/shells
+
+# Set as default shell (optional)
+chsh -s /opt/homebrew/bin/gosh
+
+# Run
+gosh
+```
+
+### Go Install
+
 ```bash
 # Install the current MVP release
 go install github.com/rsarv3006/gosh@v0.0.1
