@@ -17,7 +17,7 @@ func main() {
 	// Setup evaluator with shell access
 	evaluator.SetupWithShell(state, spawner)
 
-	fmt.Println(colors.StyleMessage("gosh v0.0.2 - Go shell with yaegi", "welcome"))
+	fmt.Println(colors.StyleMessage("gosh v0.0.3 - Go shell with yaegi", "welcome"))
 	fmt.Println(colors.StyleMessage("Type 'exit' to quit, try some Go code or shell commands!", "welcome"))
 	fmt.Println()
 
