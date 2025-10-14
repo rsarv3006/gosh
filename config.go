@@ -1,3 +1,4 @@
+// Local config - loads second, overrides home config
 package main
 
 import (
@@ -5,27 +6,22 @@ import (
 	"os"
 )
 
-// Shell startup configuration
 func init() {
-	// Example: Set a color theme (uncomment to try)
-	// SetColorTheme("light")
-	// SetColorTheme("solarized") 
-	// SetColorTheme("mono")
-	
-	// Example: Customize specific colors
-	// SetPromptColor("directory", "#00ff7f")  // Bright green
-	// SetOutputColor("error", "#ff4444")      // Red errors
-
-	// Environment setup
-	fmt.Println("Config: Setting up environment...")
+	fmt.Println("LOCAL config: Setting up project-specific environment...")
+	// Override home config's EDITOR setting
+	os.Setenv("EDITOR", "code")
+	// Add local-only env vars
+	os.Setenv("GOSH_SOURCE", "local-config")
 	os.Setenv("GOSH_USER", "config_loaded")
-
-	// Custom shell functions available in the REPL
-	fmt.Println("Config: Defining custom functions...")
+	fmt.Println("LOCAL config: Defining project-specific functions...")
 }
 
-// Simple function that doesn't use shell APIs yet
+// Override home config's info function
 func info() {
-	fmt.Printf("Config loaded successfully!\n")
-	fmt.Printf("User: %s\n", os.Getenv("GOSH_USER"))
+	fmt.Printf("LOCAL config: Project-specific info - EDITOR=%s, SOURCE=%s\n", os.Getenv("EDITOR"), os.Getenv("GOSH_SOURCE"))
+}
+
+// Local-only function
+func projectCmd() {
+	fmt.Println("LOCAL config: Project-specific command")
 }

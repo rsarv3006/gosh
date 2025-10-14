@@ -26,11 +26,22 @@ type GoEvaluator struct {
 }
 
 func NewGoEvaluator() *GoEvaluator {
+	// Temporarily change to a clean directory to prevent auto-loading
+	originalDir, _ := os.Getwd()
+	tempDir := "/tmp/gosh-clean-" + fmt.Sprintf("%d", os.Getpid())
+	os.MkdirAll(tempDir, 0755)
+	os.Chdir(tempDir)
+	
+	// Create interpreter in clean directory
 	i := interp.New(interp.Options{
 		GoPath: os.Getenv("GOPATH"),
 		Stdout: os.Stdout, // Will be updated per-eval
 		Stderr: os.Stderr,
 	})
+	
+	// Change back to original directory RIGHT AWAY (not in defer)
+	os.Chdir(originalDir)
+	os.RemoveAll(tempDir)
 
 	// Load standard library
 	i.Use(stdlib.Symbols)
@@ -101,24 +112,34 @@ func (g *GoEvaluator) stripImports(code string) string {
 }
 
 func (g *GoEvaluator) LoadConfig() error {
-	// Look for config.go in current directory first
-	configPath := "config.go"
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		// Try home directory
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return nil // No home dir, skip config
-		}
-		configPath = filepath.Join(homeDir, ".config", "gosh", "config.go")
-		if _, err := os.Stat(configPath); os.IsNotExist(err) {
-			return nil // No config file found
-		}
+	// Load home config first
+	if err := g.loadConfigFile("home config", g.getHomeConfigPath()); err != nil {
+		return err
 	}
+
+	// Then load local config (overrides home config)
+	if err := g.loadConfigFile("local config", "config.go"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// loadConfigFile loads a specific config file
+func (g *GoEvaluator) loadConfigFile(configType, configPath string) error {
+	// Check if file exists
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		return nil // File doesn't exist, that's OK
+	}
+
+	// Get original directory to properly resolve relative paths
+	originalDir, _ := os.Getwd()
+	defer os.Chdir(originalDir)
 
 	// Read config file
 	content, err := os.ReadFile(configPath)
 	if err != nil {
-		return fmt.Errorf("error reading config.go: %w", err)
+		return fmt.Errorf("error reading %s (%s): %w", configType, configPath, err)
 	}
 
 	// Strip import statements since common packages are already pre-imported
@@ -126,12 +147,23 @@ func (g *GoEvaluator) LoadConfig() error {
 
 	// Evaluate config code
 	if _, err := g.interp.Eval(configCode); err != nil {
-		return fmt.Errorf("error evaluating config.go: %w", err)
+		return fmt.Errorf("error evaluating %s: %w", configType, err)
 	}
 
-	fmt.Printf("Loaded config from %s\n", configPath)
+	fmt.Printf("Loaded %s from %s\n", configType, configPath)
 	return nil
 }
+
+// getHomeConfigPath returns the home config path
+func (g *GoEvaluator) getHomeConfigPath() string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(homeDir, ".config", "gosh", "config.go")
+}
+
+
 
 func (g *GoEvaluator) Eval(code string) ExecutionResult {
 	// Mark that we're entering yaegi evaluation
@@ -335,3 +367,19 @@ func formatResult(v reflect.Value) string {
 		return fmt.Sprintf("%v", v.Interface())
 	}
 }
+
+// evaluateStoredConfig evaluates config content that was read before interpreter creation
+func (g *GoEvaluator) evaluateStoredConfig(configType, configContent string) error {
+	// Strip import statements since common packages are already pre-imported
+	configContent = g.stripImports(configContent)
+
+	// Evaluate config code
+	if _, err := g.interp.Eval(configContent); err != nil {
+		return fmt.Errorf("error evaluating %s: %w", configType, err)
+	}
+
+	fmt.Printf("Loaded %s\n", configType)
+	return nil
+}
+
+

@@ -135,6 +135,19 @@ Create a Go file for shell customization at:
 1. `./config.go` (current directory, takes precedence)
 2. `~/.config/gosh/config.go` (home directory, fallback)
 
+**⚠️ IMPORTANT: Config Loading Order**
+
+Due to yaegi auto-loading `.go` files from the current directory, the actual loading order is:
+
+1. **Local config loads first** (`./config.go`) - project-specific overrides ✅
+2. **Home config loads second** (`~/.config/gosh/config.go`) - fallback defaults
+
+This means **local config takes precedence** over home config, which is ideal for project-specific customization.
+
+**Example use case:**
+- **Home config**: Your general shell preferences (`EDITOR=vim`, global functions)
+- **Local config**: Project-specific overrides (`EDITOR=code` for this project)
+
 ```go
 // config.go
 package main
@@ -398,6 +411,21 @@ go build
 - [x] Configurable with Go code ✅
 - [x] Rarely have to drop back to another shell ✅
 - [x] Feels snappy and responsive ✅
+
+## 🚀 Future Plans
+
+### Core Shell Features
+- [ ] Pipe support (`ls | grep foo`)
+- [ ] Background jobs (`long_command &`)
+- [ ] Better error messages with line numbers
+- [ ] Git integration in prompt
+
+### Developer Experience - TODO: 
+- [ ] **Go function autocomplete improvement** - Currently basic tab completion for commands and file paths, need intelligent Go function completion
+- [ ] **Go intellisense implementation** - Code completion, type hints, function signatures for Go code in the REPL
+- [ ] LSP integration for Go code editing in the shell
+- [ ] Syntax highlighting for Go code input
+- [ ] Documentation lookup (`go doc` integration)
 
 ## Known yaegi Limitations
 

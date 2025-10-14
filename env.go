@@ -4,7 +4,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,13 +21,10 @@ func NewEnvironmentManager(state *ShellState) *EnvironmentManager {
 // InitializeEnvironment sets up the hybrid environment strategy
 func (em *EnvironmentManager) InitializeEnvironment() {
 	isLogin := em.isLoginShell()
-	fmt.Printf("DEBUG: isLoginShell = %v\n", isLogin)
 	
 	if isLogin {
-		fmt.Println("DEBUG: Loading login shell configs...")
 		em.loadLoginShellConfigs()
 	} else {
-		fmt.Println("DEBUG: Inheriting from parent shell...")
 		em.inheritFromParentShell()
 	}
 
@@ -183,8 +179,6 @@ func (em *EnvironmentManager) handleEvalStatement(evalLine string) {
 
 // handleBrewShellenv executes brew shellenv and captures its output
 func (em *EnvironmentManager) handleBrewShellenv() {
-	fmt.Println("DEBUG: Handling brew shellenv...")
-	
 	// Try common brew locations
 	brewPaths := []string{
 		"/opt/homebrew/bin/brew", // Apple Silicon
@@ -196,13 +190,11 @@ func (em *EnvironmentManager) handleBrewShellenv() {
 	for _, path := range brewPaths {
 		if _, err := os.Stat(path); err == nil {
 			brewPath = path
-			fmt.Printf("DEBUG: Found brew at %s\n", path)
 			break
 		}
 	}
 	
 	if brewPath == "" {
-		fmt.Println("DEBUG: brew not found")
 		return
 	}
 
@@ -211,11 +203,10 @@ func (em *EnvironmentManager) handleBrewShellenv() {
 	cmd.Env = em.getAllEnvVars()
 	output, err := cmd.Output()
 	if err != nil {
-		fmt.Printf("DEBUG: brew shellenv failed: %v\n", err)
+		// Simple fallback: manually add brew paths
+		em.addBrewPaths()
 		return
 	}
-	
-	fmt.Printf("DEBUG: brew shellenv output length: %d\n", len(output))
 
 	// Execute the shellenv commands in a subshell to get the final environment
 	shellCommands := string(output) + " && env"
@@ -223,23 +214,13 @@ func (em *EnvironmentManager) handleBrewShellenv() {
 	shellCmd.Env = em.getAllEnvVars()
 	envOutput, err := shellCmd.Output()
 	if err != nil {
-		fmt.Printf("DEBUG: shellenv execution failed: %v\n", err)
-		fmt.Printf("DEBUG: Commands were: %s\n", shellCommands)
 		// Fallback: manually add brew paths
 		em.addBrewPaths()
 		return
 	}
 
-	fmt.Printf("DEBUG: Env output length: %d\n", len(envOutput))
-	preview := string(envOutput)
-	if len(preview) > 200 {
-		preview = preview[:200] + "..."
-	}
-	fmt.Printf("DEBUG: Env output preview: %s\n", preview)
-
 	// Parse the environment output
 	em.parseEnvOutput(string(envOutput))
-	fmt.Printf("DEBUG: Final PATH after brew shellenv: %s\n", em.state.Environment["PATH"])
 }
 
 // addBrewPaths is fallback for when shellenv execution fails
@@ -251,14 +232,12 @@ func (em *EnvironmentManager) addBrewPaths() {
 	if !strings.Contains(currentPath, brewBin) {
 		if _, err := os.Stat(brewBin); err == nil {
 			em.state.Environment["PATH"] = brewBin + ":" + currentPath
-			fmt.Println("DEBUG: Added brew bin to PATH (fallback)")
 		}
 	}
 	
 	if !strings.Contains(em.state.Environment["PATH"], brewSBin) {
 		if _, err := os.Stat(brewSBin); err == nil {
 			em.state.Environment["PATH"] = em.state.Environment["PATH"] + ":" + brewSBin
-			fmt.Println("DEBUG: Added brew sbin to PATH (fallback)")
 		}
 	}
 }
@@ -291,7 +270,6 @@ func (em *EnvironmentManager) parseEnvOutput(output string) {
 			parts := strings.SplitN(line, "=", 2)
 			if len(parts) == 2 {
 				em.state.Environment[parts[0]] = parts[1]
-				fmt.Printf("DEBUG: Set env %s\n", parts[0])
 			}
 		}
 	}
