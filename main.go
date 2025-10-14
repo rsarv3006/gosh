@@ -8,17 +8,17 @@ import (
 	"strings"
 )
 
-const version = "v0.0.7"
+
 
 func main() {
 	// Check for command line flags
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "-v", "--version":
-			fmt.Printf("gosh %s\n", version)
+			fmt.Printf("gosh %s\n", GetVersion())
 			os.Exit(0)
 		case "-h", "--help":
-			fmt.Printf("gosh %s - Go shell with yaegi\n\n", version)
+			fmt.Printf("gosh %s - Go shell with yaegi\n\n", GetVersion())
 			fmt.Println("Usage:")
 			fmt.Println("  gosh          Start the gosh interactive shell")
 			fmt.Println("  gosh --version Show version information")
@@ -57,7 +57,7 @@ func main() {
 	// Setup evaluator with shell access
 	evaluator.SetupWithShell(state, spawner)
 
-	fmt.Println(colors.StyleMessage("gosh v0.0.7 - Go shell with yaegi", "welcome"))
+	fmt.Println(colors.StyleMessage("gosh "+GetVersion()+" - Go shell with yaegi", "welcome"))
 	fmt.Println(colors.StyleMessage("Type 'exit' to quit, try some Go code or shell commands!", "welcome"))
 	fmt.Println()
 

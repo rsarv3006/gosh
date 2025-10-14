@@ -150,12 +150,18 @@ func init() {
 	os.Setenv("GOPATH", os.Getenv("HOME") + "/go")
 	os.Setenv("EDITOR", "vim")
 	fmt.Println("gosh global config loaded!")
+
+// Global functions available in any gosh session
+func info() {
+	fmt.Printf("gosh %s - GOPATH: %s, EDITOR: %s\n", 
+		"main".GetVersion(), os.Getenv("GOPATH"), os.Getenv("EDITOR"))
+}
 }
 
 // Global functions available in any gosh session
 func info() {
-	fmt.Printf("gosh v0.0.7 - GOPATH: %s, EDITOR: %s\n", 
-		os.Getenv("GOPATH"), os.Getenv("EDITOR"))
+	fmt.Printf("gosh %s - GOPATH: %s, EDITOR: %s\n", 
+		"main".GetVersion(), os.Getenv("GOPATH"), os.Getenv("EDITOR"))
 }
 
 func devSetup() {
