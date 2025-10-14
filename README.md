@@ -154,7 +154,7 @@ func init() {
 
 // Global functions available in any gosh session
 func info() {
-	fmt.Printf("gosh v0.0.5 - GOPATH: %s, EDITOR: %s\n", 
+	fmt.Printf("gosh v0.0.7 - GOPATH: %s, EDITOR: %s\n", 
 		os.Getenv("GOPATH"), os.Getenv("EDITOR"))
 }
 

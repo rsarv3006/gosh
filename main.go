@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-const version = "v0.0.5"
+const version = "v0.0.7"
 
 func main() {
 	// Check for command line flags
@@ -57,7 +57,7 @@ func main() {
 	// Setup evaluator with shell access
 	evaluator.SetupWithShell(state, spawner)
 
-	fmt.Println(colors.StyleMessage(fmt.Sprintf("gosh %s - Go shell with yaegi", version), "welcome"))
+	fmt.Println(colors.StyleMessage("gosh v0.0.7 - Go shell with yaegi", "welcome"))
 	fmt.Println(colors.StyleMessage("Type 'exit' to quit, try some Go code or shell commands!", "welcome"))
 	fmt.Println()
 
