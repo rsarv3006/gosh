@@ -150,66 +150,16 @@ func init() {
 	os.Setenv("GOPATH", os.Getenv("HOME") + "/go")
 	os.Setenv("EDITOR", "vim")
 	fmt.Println("gosh global config loaded!")
-
-// Global functions available in any gosh session
-func info() {
-	fmt.Printf("gosh %s - GOPATH: %s, EDITOR: %s\n", 
-		"main".GetVersion(), os.Getenv("GOPATH"), os.Getenv("EDITOR"))
-}
 }
 
 // Global functions available in any gosh session
 func info() {
-	fmt.Printf("gosh %s - GOPATH: %s, EDITOR: %s\n", 
+	fmt.Printf("gosh %s - GOPATH: %s, EDITOR: %s\n",
 		"main".GetVersion(), os.Getenv("GOPATH"), os.Getenv("EDITOR"))
 }
 
-func devSetup() {
-	os.Setenv("GO111MODULE", "on")
-	os.Setenv("CGO_ENABLED", "1")
-	fmt.Println("Development environment configured")
-}
-```
-
-```go
-// config.go
-package main
-
-import (
-    "fmt"
-    "os"
-    "strings"
-)
-
-// Runs on shell startup - Go-powered initialization
-func init() {
-    fmt.Println("Welcome to gosh!")
-    os.Setenv("GOSH_USER", os.Getenv("USER"))
-}
-
-// Custom functions that persist throughout the shell session
-func hello(name string) {
-    fmt.Printf("Hello %s! Welcome to gosh!\n", name)
-}
-
-func info() {
-    fmt.Printf("Config loaded successfully!\n")
-    fmt.Printf("User: %s\n", os.Getenv("GOSH_USER"))
-}
-
-// Go-powered utilities - things you can't do in bash!
-func smartLs() {
-    // Custom ls with Go logic, filtering, sorting, etc.
-}
-
-func gitSummary() {
-    // Git status parsing with Go packages
-}
-
-// Custom prompt extension (when implemented)
-func CustomPrompt() string {
-    return fmt.Sprintf("gosh[%s]$ ",
-        strings.TrimPrefix(os.Getenv("PWD"), os.Getenv("HOME")))
+func clean(a string) string {
+	return strings.TrimSpace(a)
 }
 ```
 
@@ -265,26 +215,11 @@ Found 12 files
 ## For Technical Details
 
 📖 **See [ARCHITECTURE.md](ARCHITECTURE.md)** for complete technical documentation including:
+
 - Core components and data flow
-- Command substitution implementation  
+- Command substitution implementation
 - Error handling and signal management
 - Testing strategies and performance considerations
-```
-
-#### 2. Go Evaluator
-
-
-
-## Why gosh vs Other Solutions
-
-| Aspect           | Other REPLs       | gosh                    |
-| ---------------- | ----------------- | ----------------------- |
-| Startup time     | 10-12 seconds     | ~10ms                   |
-| Architecture     | PTY + external    | Embedded interpreter    |
-| State management | Parse REPL output | Native Go values        |
-| Complexity       | PTY parsing       | Simple API calls        |
-| Persistence      | Hope REPL keeps   | Direct variable storage |
-| Platform         | OS-specific       | Cross-platform          |
 
 ## Building
 
@@ -312,58 +247,69 @@ go build
 
 **🎯 Phase 2 Complete**:
 
-- [x] Hybrid environment system (standard shell configs + Go extensions) ✅
-- [x] Config file support (config.go) ✅
-- [x] Tab completion for commands and file paths ✅
-- [x] Color system with theme support ✅
-- [x] Comprehensive test coverage ✅
-- [x] Enhanced help system ✅
+- ✅ Hybrid environment system (standard shell configs + Go extensions)
+- ✅ Config file support (config.go)
+- ✅ Tab completion for commands and file paths
+- ✅ Color system with theme support
+- ✅ Comprehensive test coverage
+- ✅ Enhanced help system
 
 **🚀 Phase 3 In Progress**:
 
-- [x] Command history navigation (up/down arrows) ✅
+- ✅ Command history navigation (up/down arrows)
 - [ ] Better error messages with line numbers
-- [ ] Pipe support (`ls | grep foo`)
-- [ ] Background jobs (`long_command &`)
 - [ ] Git integration in prompt
 
-## Success Criteria
+**🔧 Phase 4 Planned**:
 
-**✅ MVP Success:**
+**goshlib - Shell-Friendly Go Library**
 
-- [x] Starts instantly (< 100ms)
-- [x] Can run basic commands (`ls`, `git status`, etc.)
-- [x] Can write Go code with persistent state
-- [x] Doesn't crash on Ctrl+C
-- [x] Can write multiline Go code (functions, if statements, loops)
-- [x] Can capture command output with `$(command)`
-- [x] Can `cd` around properly
+Phase 4 introduces an optional utility library that provides shell-like convenience functions while maintaining Go's power and flexibility. Functions can be used both in gosh and as standalone Go imports.
 
-**🎯 Daily Driver Success:**
+```go
+// One-liner friendly functions (optional via config)
+gosh> result := run("ls -la")           // Auto-trim output
+gosh> files := lsDir(".", "*.go")       // List files by pattern
+gosh> found := grepFile("README", "gosh") // Search file content
+gosh> write("out.txt", "hello")         // Write file
+gosh> content := read("out.txt")         // Read file with auto-trim
 
-- [x] Want to use it instead of zsh ✅
-- [x] Tab completion works well enough ✅
-- [x] Command history doesn't suck ✅
-- [x] Configurable with Go code ✅
-- [x] Rarely have to drop back to another shell ✅
-- [x] Feels snappy and responsive ✅
+// Channel sugar for concurrent operations
+gosh> ch := channel()                   // Create buffered channel
+gosh> async(send, ch, "hello")          // Background send
+gosh> println(recv(ch))                 // Receive value
+
+// String processing utilities
+gosh> cleaned := clean(text)            // Trim whitespace (custom example)
+gosh> parts := split(text, "\n")        // Split by delimiter
+gosh> first := head(parts, 3)           // Get first N items
+```
+
+**Key Benefits:**
+- **Consistent Interface**: Same functions work in gosh and standalone Go programs
+- **Gradual Migration**: Start with one-liners, import library for formal scripts
+- **Optional Loading**: Purists get clean Go by default, enable via `EnableUtils = true` in config
+- **Explicit Power**: All utilities are visible Go code, no hidden magic
+- **Learning Bridge**: Makes Go patterns accessible to shell scripters
+
+**Configuration:**
+```go
+// ~/.config/gosh/config.go
+var EnableUtils = true  // Set to true to load shell-friendly utility functions
+```
 
 ## 🚀 Future Plans
 
-### Core Shell Features
-- [ ] Pipe support (`ls | grep foo`)
-- [ ] Background jobs (`long_command &`)
-- [ ] Better error messages with line numbers
-- [ ] Git integration in prompt
-
 ### Project-Specific Configuration - TODO:
-- [ ] **Project config loading** - `loadProject("config.local")` or similar 
+
+- [ ] **Project config loading** - `loadProject("config.local")` or similar
 - [ ] **Project-specific functions** - Define per-project Go functions
 - [ ] **Environment files support** - Load `.env.local` or project configuration
 - [ ] **Project detection** - Automatically detect project type and load appropriate config
 - [ ] **Mix local and global** - Combine global setup with project-specific overrides
 
-### Developer Experience - TODO: 
+### Developer Experience - TODO:
+
 - [ ] **Go function autocomplete improvement** - Currently basic tab completion for commands and file paths, need intelligent Go function completion
 - [ ] **Go intellisense implementation** - Code completion, type hints, function signatures for Go code in the REPL
 - [ ] LSP integration for Go code editing in the shell

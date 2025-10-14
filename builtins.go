@@ -113,7 +113,6 @@ func (b *BuiltinHandler) exit(args []string) ExecutionResult {
 func (b *BuiltinHandler) pwd(args []string) ExecutionResult {
 	output := b.state.WorkingDirectory
 	if len(args) > 0 && args[0] == "-L" {
-		// Logical pwd (with symlinks)
 		if wd, err := os.Getwd(); err == nil {
 			output = wd
 		}
@@ -166,7 +165,7 @@ func (b *BuiltinHandler) help(args []string) ExecutionResult {
 
 	// Help for specific commands
 	command := args[0]
-	
+
 	if command == "cd" {
 		return ExecutionResult{
 			Output: "cd - Change Directory\n\n" +
@@ -183,7 +182,7 @@ func (b *BuiltinHandler) help(args []string) ExecutionResult {
 			ExitCode: 0, Error: nil,
 		}
 	}
-	
+
 	if command == "pwd" {
 		return ExecutionResult{
 			Output: "pwd - Print Working Directory\n\n" +
@@ -196,7 +195,7 @@ func (b *BuiltinHandler) help(args []string) ExecutionResult {
 			ExitCode: 0, Error: nil,
 		}
 	}
-	
+
 	if command == "exit" {
 		return ExecutionResult{
 			Output: "exit - Exit Shell\n\n" +
@@ -211,7 +210,7 @@ func (b *BuiltinHandler) help(args []string) ExecutionResult {
 			ExitCode: 0, Error: nil,
 		}
 	}
-	
+
 	if command == "help" {
 		return ExecutionResult{
 			Output: "help - Show Help\n\n" +
@@ -226,7 +225,7 @@ func (b *BuiltinHandler) help(args []string) ExecutionResult {
 			ExitCode: 0, Error: nil,
 		}
 	}
-	
+
 	// Check for config help
 	if command == "config" || command == "config.go" {
 		return ExecutionResult{
@@ -297,7 +296,7 @@ func (b *BuiltinHandler) help(args []string) ExecutionResult {
 				ExitCode: 0, Error: nil,
 			}
 		}
-		
+
 		if command == "go" || command == "golang" || command == "yaegi" {
 			return ExecutionResult{
 				Output: "Go Code Execution\n\n" +
@@ -324,7 +323,7 @@ func (b *BuiltinHandler) help(args []string) ExecutionResult {
 			}
 		}
 	}
-	
+
 	// Check if it's a shell command
 	if path, found := FindInPath(command, b.state.Environment["PATH"]); found {
 		return ExecutionResult{
