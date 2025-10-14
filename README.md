@@ -112,12 +112,14 @@ gosh uses a **dual-layer configuration approach** that gives you the best of bot
 #### Layer 1: Standard Shell Environment (`env.go`)
 
 **Automatic Standard Config Loading:**
+
 - Loads regular shell configs when run as login shell
 - Supports: `.bash_profile`, `.zprofile`, `.profile`, `.bash_login`, `.login`
 - Full POSIX environment inheritance
 - Shell variable expansion `$HOME`, `$PATH`, `$GOPATH`
 
 **Example .bash_profile**
+
 ```bash
 # Your existing shell configs just work!
 export PATH="/opt/homebrew/bin:$PATH"
@@ -129,7 +131,8 @@ export JAVA_HOME="/usr/local/opt/openjdk"
 #### Layer 2: Go-Powered Extensions (`config.go`)
 
 Create a Go file for shell customization at:
-1. `./config.go` (current directory, takes precedence)  
+
+1. `./config.go` (current directory, takes precedence)
 2. `~/.config/gosh/config.go` (home directory, fallback)
 
 ```go
@@ -169,7 +172,7 @@ func gitSummary() {
 
 // Custom prompt extension (when implemented)
 func CustomPrompt() string {
-    return fmt.Sprintf("gosh[%s]$ ", 
+    return fmt.Sprintf("gosh[%s]$ ",
         strings.TrimPrefix(os.Getenv("PWD"), os.Getenv("HOME")))
 }
 ```
@@ -177,12 +180,14 @@ func CustomPrompt() string {
 #### Environment Layer Benefits
 
 **Standard Shell Features:**
+
 - ✅ `export VAR=value` syntax (no learning curve)
 - ✅ Supports your existing `.bash_profile` / `.zprofile`
 - ✅ Traditional environment variable management
 - ✅ Shell variable expansion in commands: `echo $HOME`
 
 **Go Extension Features:**
+
 - ✅ Full Go language for custom shell functions
 - ✅ Access to all Go packages and types
 - ✅ Better error handling and debugging
@@ -214,9 +219,10 @@ Found 12 files
 ```
 
 **The hybrid approach means you get:**
+
 - Zero learning curve for basic shell usage
 - Standard POSIX environment behavior
-- Your existing shell configs work automatically  
+- Your existing shell configs work automatically
 - Go superpowers when you need them
 - No custom environment syntax to learn
 
@@ -258,7 +264,7 @@ func NewGoEvaluator() *GoEvaluator {
         GoPath: os.Getenv("GOPATH"),
     })
     i.Use(stdlib.Symbols)  // All standard library
-    
+
     // Pre-import common packages for convenience
     i.Eval(`
 import (
@@ -273,6 +279,7 @@ import (
 ```
 
 **State persistence:**
+
 - Variables defined persist automatically
 - Functions defined persist automatically
 - Imports persist automatically
@@ -295,7 +302,7 @@ func (p *ProcessSpawner) ExecuteInteractive(command string, args []string) Execu
     // Track current process for signal handling
     p.state.CurrentProcess = cmd.Process
     defer func() { p.state.CurrentProcess = nil }()
-    
+
     err = cmd.Wait()
     return ExecutionResult{...}
 }
@@ -321,14 +328,14 @@ type ShellState struct {
 
 ## Why gosh vs Other Solutions
 
-| Aspect           | Other REPLs        | gosh                               |
-| ---------------- | ----------------- | ---------------------------------- |
-| Startup time     | 10-12 seconds     | ~10ms                              |
-| Architecture     | PTY + external    | Embedded interpreter               |
-| State management | Parse REPL output | Native Go values                   |
-| Complexity       | PTY parsing       | Simple API calls                   |
-| Persistence      | Hope REPL keeps   | Direct variable storage            |
-| Platform         | OS-specific      | Cross-platform                     |
+| Aspect           | Other REPLs       | gosh                    |
+| ---------------- | ----------------- | ----------------------- |
+| Startup time     | 10-12 seconds     | ~10ms                   |
+| Architecture     | PTY + external    | Embedded interpreter    |
+| State management | Parse REPL output | Native Go values        |
+| Complexity       | PTY parsing       | Simple API calls        |
+| Persistence      | Hope REPL keeps   | Direct variable storage |
+| Platform         | OS-specific       | Cross-platform          |
 
 ## Building
 
@@ -399,23 +406,6 @@ go build
 3. **Unsafe**: Some unsafe operations restricted
 
 **These don't matter for a shell REPL - we're doing basic scripting, not systems programming.**
-
-## Repository Structure
-
-```
-gosh/
-├── main.go              # Entry point
-├── repl.go              # Core REPL loop with multiline support
-├── router.go            # Smart routing logic with command substitution detection
-├── evaluator.go         # yaegi wrapper with command substitution processing
-├── spawner.go           # Command execution with signal handling
-├── builtins.go          # Built-in commands
-├── state.go             # State management with process tracking
-├── types.go             # Shared types
-├── go.mod               # Dependencies (yaegi + readline)
-├── README.md            # This file
-└── gosh-design-doc.md   # Original design documentation
-```
 
 ## Dependencies
 
