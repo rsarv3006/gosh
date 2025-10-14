@@ -112,13 +112,8 @@ func (g *GoEvaluator) stripImports(code string) string {
 }
 
 func (g *GoEvaluator) LoadConfig() error {
-	// Load home config first
+	// Load global config from ~/.config/gosh/config.go
 	if err := g.loadConfigFile("home config", g.getHomeConfigPath()); err != nil {
-		return err
-	}
-
-	// Then load local config (overrides home config)
-	if err := g.loadConfigFile("local config", "config.go"); err != nil {
 		return err
 	}
 

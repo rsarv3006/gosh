@@ -130,23 +130,40 @@ export JAVA_HOME="/usr/local/opt/openjdk"
 
 #### Layer 2: Go-Powered Extensions (`config.go`)
 
-Create a Go file for shell customization at:
+Create a Go file for your global shell customization at:
 
-1. `./config.go` (current directory, takes precedence)
-2. `~/.config/gosh/config.go` (home directory, fallback)
+`~/.config/gosh/config.go`
 
-**⚠️ IMPORTANT: Config Loading Order**
+This single global config loads every time gosh starts, providing consistent shell behavior across all projects.
 
-Due to yaegi auto-loading `.go` files from the current directory, the actual loading order is:
+```go
+// ~/.config/gosh/config.go
+package main
 
-1. **Local config loads first** (`./config.go`) - project-specific overrides ✅
-2. **Home config loads second** (`~/.config/gosh/config.go`) - fallback defaults
+import (
+	"fmt"
+	"os"
+)
 
-This means **local config takes precedence** over home config, which is ideal for project-specific customization.
+func init() {
+	// Global environment setup
+	os.Setenv("GOPATH", os.Getenv("HOME") + "/go")
+	os.Setenv("EDITOR", "vim")
+	fmt.Println("gosh global config loaded!")
+}
 
-**Example use case:**
-- **Home config**: Your general shell preferences (`EDITOR=vim`, global functions)
-- **Local config**: Project-specific overrides (`EDITOR=code` for this project)
+// Global functions available in any gosh session
+func info() {
+	fmt.Printf("gosh v0.0.5 - GOPATH: %s, EDITOR: %s\n", 
+		os.Getenv("GOPATH"), os.Getenv("EDITOR"))
+}
+
+func devSetup() {
+	os.Setenv("GO111MODULE", "on")
+	os.Setenv("CGO_ENABLED", "1")
+	fmt.Println("Development environment configured")
+}
+```
 
 ```go
 // config.go
@@ -419,6 +436,13 @@ go build
 - [ ] Background jobs (`long_command &`)
 - [ ] Better error messages with line numbers
 - [ ] Git integration in prompt
+
+### Project-Specific Configuration - TODO:
+- [ ] **Project config loading** - `loadProject("config.local")` or similar 
+- [ ] **Project-specific functions** - Define per-project Go functions
+- [ ] **Environment files support** - Load `.env.local` or project configuration
+- [ ] **Project detection** - Automatically detect project type and load appropriate config
+- [ ] **Mix local and global** - Combine global setup with project-specific overrides
 
 ### Developer Experience - TODO: 
 - [ ] **Go function autocomplete improvement** - Currently basic tab completion for commands and file paths, need intelligent Go function completion
