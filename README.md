@@ -256,105 +256,18 @@ Found 12 files
 - Go superpowers when you need them
 - No custom environment syntax to learn
 
-## Architecture
+## For Technical Details
 
-### The Core Loop
-
+📖 **See [ARCHITECTURE.md](ARCHITECTURE.md)** for complete technical documentation including:
+- Core components and data flow
+- Command substitution implementation  
+- Error handling and signal management
+- Testing strategies and performance considerations
 ```
-1. Display prompt (shows current directory with ~ substitution)
-2. Read line of input (using readline with multiline support)
-3. Parse and route input (smart heuristics + PATH checking)
-4. Execute (yaegi eval, process spawn, or built-in)
-5. Handle output and errors
-6. Update state (working directory, Go interpreter state)
-7. Repeat
-```
-
-### Core Components
-
-#### 1. Router
-
-Takes input and decides: Go eval, process spawn, or built-in:
-
-- Built-ins checked first (`cd`, `exit`)
-- Go syntax markers (`var`, `const`, `func`, `type`, `struct`, `interface`, `import`, `for`, `range`, `if`, `switch`)
-- Assignment or closures (`:=`, `=`, `{`)
-- Function calls with string literals → Go
-- Common Go functions (`fmt.Println`, `len`, `cap`, `make`, `append`, `copy`)
-- Command substitution syntax `$(command)` → Go
-- Fallback to PATH check for commands with parentheses
 
 #### 2. Go Evaluator
 
-**Embedded yaegi interpreter:**
 
-```go
-func NewGoEvaluator() *GoEvaluator {
-    i := interp.New(interp.Options{
-        GoPath: os.Getenv("GOPATH"),
-    })
-    i.Use(stdlib.Symbols)  // All standard library
-
-    // Pre-import common packages for convenience
-    i.Eval(`
-import (
-    "fmt"
-    "os"
-    "strings"
-    "strconv"
-    "path/filepath"
-)`)
-    return &GoEvaluator{interp: i}
-}
-```
-
-**State persistence:**
-
-- Variables defined persist automatically
-- Functions defined persist automatically
-- Imports persist automatically
-- No parsing, no filtering, no hoping
-
-#### 3. Process Spawner
-
-Resolves executables in PATH and spawns processes with proper stdio handling:
-
-```go
-func (p *ProcessSpawner) ExecuteInteractive(command string, args []string) ExecutionResult {
-    cmd := exec.Command(command, args...)
-    cmd.Stdin = os.Stdin
-    cmd.Stdout = os.Stdout
-    cmd.Stderr = os.Stderr
-    cmd.Dir = p.state.WorkingDirectory
-    cmd.Env = p.state.EnvironmentVars()
-
-    err := cmd.Start()
-    // Track current process for signal handling
-    p.state.CurrentProcess = cmd.Process
-    defer func() { p.state.CurrentProcess = nil }()
-
-    err = cmd.Wait()
-    return ExecutionResult{...}
-}
-```
-
-#### 4. Built-in Handler
-
-- `cd` - with path expansion
-- `exit` - sets shouldExit flag
-- Easy to extend
-
-#### 5. State Management
-
-```go
-type ShellState struct {
-    WorkingDirectory string
-    Environment      map[string]string
-    ShouldExit       bool
-    ExitCode         int
-    CurrentProcess   *os.Process  // For signal handling
-}
-```
 
 ## Why gosh vs Other Solutions
 
