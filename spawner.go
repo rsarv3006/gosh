@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+
+
 type ProcessSpawner struct {
 	state *ShellState
 }
@@ -20,10 +22,53 @@ func NewProcessSpawner(state *ShellState) *ProcessSpawner {
 
 // Execute runs a command and returns the result
 func (p *ProcessSpawner) Execute(command string, args []string) ExecutionResult {
-	cmd := exec.Command(command, args...)
-	cmd.Dir = p.state.WorkingDirectory
-	cmd.Env = p.state.EnvironmentSlice()
-	cmd.Stdin = os.Stdin
+	var cmd *exec.Cmd
+	
+	// Handle both direct git status calls and env GIT_COLOR=always git status calls
+	isGitStatus := (command == "git" && len(args) > 0 && args[0] == "status") ||
+		(command == "env" && len(args) >= 3 && args[len(args)-2] == "git" && args[len(args)-1] == "status")
+	
+	if isGitStatus {
+		// Force git status to use colors
+		env := p.state.EnvironmentSlice()
+		
+		// Handle env GIT_COLOR=always git status case
+		if command == "env" {
+			// Extract git from the args and run it directly with color env vars
+			cmd = exec.Command("git", "status")
+			for _, arg := range args {
+				if strings.HasPrefix(arg, "GIT_COLOR=") {
+					env = append(env, arg)
+				}
+				if strings.HasPrefix(arg, "TERM=") {
+					env = append(env, arg)
+				}
+			}
+			// Ensure GIT_COLOR is set
+			if !containsEnv(env, "GIT_COLOR") {
+				env = append(env, "GIT_COLOR=always")
+			}
+			if !containsEnv(env, "TERM") {
+				env = append(env, "TERM=xterm-256color")
+			}
+		} else {
+			// Direct git status call
+			env = append(env, "GIT_COLOR=always")
+			env = append(env, "TERM=xterm-256color")
+			cmd = exec.Command(command, args...)
+		}
+		
+		cmd.Dir = p.state.WorkingDirectory
+		cmd.Env = env
+		cmd.Stdin = os.Stdin
+		
+		
+	} else {
+		cmd = exec.Command(command, args...)
+		cmd.Dir = p.state.WorkingDirectory
+		cmd.Env = p.state.EnvironmentSlice()
+		cmd.Stdin = os.Stdin
+	}
 
 	// Capture output
 	var stdout, stderr bytes.Buffer
@@ -42,6 +87,9 @@ func (p *ProcessSpawner) Execute(command string, args []string) ExecutionResult 
 	}
 
 	output := stdout.String()
+	
+	// ANSI escape sequences are preserved in the output for proper color display
+	
 	if stderr.Len() > 0 {
 		if output != "" {
 			output += "\n"
@@ -152,4 +200,13 @@ func FindInPath(command string, pathEnv string) (string, bool) {
 	}
 
 	return "", false
+}
+
+func containsEnv(env []string, key string) bool {
+	for _, v := range env {
+		if strings.HasPrefix(v, key+"=") {
+			return true
+		}
+	}
+	return false
 }

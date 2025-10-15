@@ -102,8 +102,11 @@ func RunREPL(state *ShellState, evaluator *GoEvaluator, spawner *ProcessSpawner,
 				// Error output
 				fmt.Println(colors.StyleOutput(result.Output, "error"))
 			} else {
-				// Success output - but don't color Go evaluation results that might interfere
-				fmt.Println(result.Output)
+				// Success output - write raw bytes to preserve tabs and formatting exactly
+				os.Stdout.WriteString(result.Output)
+				if !strings.HasSuffix(result.Output, "\n") {
+					os.Stdout.WriteString("\n")
+				}
 			}
 		}
 

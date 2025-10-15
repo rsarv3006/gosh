@@ -154,7 +154,7 @@ func RunShell(name string, args ...string) (string, error) {
 		}
 	}
 	
-	// Return command substitution that will be processed by gosh's processCommandSubstitutions
+	// Return command substitution that will be processed
 	return "$(" + cmdline + ")", nil
 }
 
@@ -267,14 +267,23 @@ func (g *GoEvaluator) Eval(code string) ExecutionResult {
 			// Function was found and called successfully
 			var output string
 			if result.IsValid() {
-				rawOutput := formatResult(result)
-				// Process command substitutions in the function result
-				output = g.processCommandSubstitutions(rawOutput)
+				// Check if result contains command substitution and process it
+				if result.Kind() == reflect.String {
+					stringResult := result.String()
+					if strings.HasPrefix(stringResult, "$(") && strings.HasSuffix(stringResult, ")") {
+						// For command substitution, process it but return RAW output, not escaped
+						output = g.processCommandSubstitutionsForDisplay(stringResult)
+					} else {
+						output = formatResult(result)
+					}
+				} else {
+					output = formatResult(result)
+				}
 			} else {
 				output = ""
 			}
 			return ExecutionResult{
-				Output:   strings.TrimSpace(output),
+				Output:   output,
 				ExitCode: 0,
 				Error:    nil,
 			}
@@ -427,6 +436,58 @@ func min(a, b int) int {
 }
 
 // restartInterpreter removed for simplicity - just provide crash recovery
+
+// processCommandSubstitutionsForDisplay processes command substitutions but returns RAW output
+func (g *GoEvaluator) processCommandSubstitutionsForDisplay(code string) string {
+	for {
+		start := strings.Index(code, "$(")
+		if start == -1 {
+			break
+		}
+
+		// Find matching closing parenthesis
+		depth := 1
+		end := -1
+		for i := start + 2; i < len(code); i++ {
+			if code[i] == '(' {
+				depth++
+			} else if code[i] == ')' {
+				depth--
+				if depth == 0 {
+					end = i
+					break
+				}
+			}
+		}
+
+		if end == -1 {
+			break // Unbalanced, return original
+		}
+
+		// Extract command
+		command := code[start+2 : end]
+		
+		// Parse the command properly
+		parts := strings.Fields(command)
+		if len(parts) == 0 {
+			code = code[:start] + code[end+1:] // Remove empty command
+			continue
+		}
+		cmd := parts[0]
+		args := parts[1:]
+		
+		spawner := NewProcessSpawner(g.state)
+		result := spawner.Execute(cmd, args)
+		
+		// Return RAW output without any escaping
+		output := result.Output
+
+		// Replace $(command) with raw output
+		code = code[:start] + output + code[end+1:]
+	}
+
+	return code
+}
 
 // processCommandSubstituions replaces $(command) with string literals containing command output
 func (g *GoEvaluator) processCommandSubstitutions(code string) string {
