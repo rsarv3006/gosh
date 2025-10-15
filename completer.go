@@ -41,7 +41,12 @@ func (g *GoshCompleter) Do(line []rune, pos int) (newLine [][]rune, length int) 
 	var matches [][]rune
 	
 	if len(prefixWords) == 0 {
-		matches = g.completeCommands(partial)
+		// Command completion - strip ./ prefix if present
+		commandPartial := partial
+		if strings.HasPrefix(partial, "./") {
+			commandPartial = partial[2:] // Remove "./" prefix
+		}
+		matches = g.completeCommands(commandPartial)
 	} else {
 		cmd := prefixWords[0]
 		matches = g.completeArguments(cmd, partial)
@@ -60,22 +65,24 @@ func (g *GoshCompleter) completeCommands(partial string) [][]rune {
 		return matches // Return empty matches list
 	}
 
-	// Commands to complete
-	commands := []string{
-		"cd", "pwd", "exit", "help",
-		"ls", "cat", "grep", "find", "ps", "kill",
-		"echo", "date", "whoami", "head", "tail",
-		"func", "var", "const", "type", "import",
-		"for", "if", "switch", "select", "return", "go", "defer",
-	}
-
-	for _, cmd := range commands {
+	// 1. Builtin commands
+	builtins := []string{"cd", "pwd", "exit", "help"}
+	for _, cmd := range builtins {
 		if strings.HasPrefix(cmd, partial) {
-			// Return only the suffix that needs to be added
 			suffix := cmd[len(partial):]
 			matches = append(matches, []rune(suffix))
 		}
 	}
+
+	// 2. Commands from PATH
+	if path, ok := os.LookupEnv("PATH"); ok {
+		pathCommands := g.getCommandsFromPath(path, partial)
+		matches = append(matches, pathCommands...)
+	}
+
+	// 3. Local directory executables (including this is key!)
+	localCommands := g.getLocalExecutables(partial)
+	matches = append(matches, localCommands...)
 
 	return matches
 }
@@ -183,5 +190,91 @@ func (g *GoshCompleter) completeFiles(partial string, dirsOnly bool) [][]rune {
 		}
 	}
 
+	return matches
+}
+
+// getCommandsFromPath finds executables in PATH directories that match partial
+func (g *GoshCompleter) getCommandsFromPath(pathEnv, partial string) [][]rune {
+	var matches [][]rune
+	
+	// Split PATH by colon
+	pathDirs := strings.Split(pathEnv, ":")
+	seen := make(map[string]bool) // Avoid duplicates
+
+	for _, dir := range pathDirs {
+		if dir == "" {
+			continue
+		}
+		
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+		
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			
+			name := entry.Name()
+			
+			// Check if it's executable (Unix check)
+			info, err := entry.Info()
+			if err != nil {
+				continue
+			}
+			
+			if info.Mode().Perm()&0111 == 0 { // Not executable
+				continue
+			}
+			
+			// Skip if already seen
+			if seen[name] {
+				continue
+			}
+			seen[name] = true
+			
+			if strings.HasPrefix(name, partial) {
+				suffix := name[len(partial):]
+				matches = append(matches, []rune(suffix))
+			}
+		}
+	}
+	
+	return matches
+}
+
+// getLocalExecutables finds executables in current directory
+func (g *GoshCompleter) getLocalExecutables(partial string) [][]rune {
+	var matches [][]rune
+	
+	entries, err := os.ReadDir(".")
+	if err != nil {
+		return matches
+	}
+	
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		
+		name := entry.Name()
+		
+		// Check if it's executable
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		
+		if info.Mode().Perm()&0111 == 0 { // Not executable
+			continue
+		}
+		
+		if strings.HasPrefix(name, partial) {
+			suffix := name[len(partial):]
+			matches = append(matches, []rune(suffix))
+		}
+	}
+	
 	return matches
 }

@@ -23,6 +23,7 @@ type GoEvaluator struct {
 	originalErr *os.File
 	state       *ShellState
 	spawner     *ProcessSpawner
+	configFuncs map[string]reflect.Value // Store config functions for calling
 }
 
 func NewGoEvaluator() *GoEvaluator {
@@ -46,6 +47,8 @@ func NewGoEvaluator() *GoEvaluator {
 	// Load standard library
 	i.Use(stdlib.Symbols)
 
+	
+
 	// Pre-import common packages for convenience
 	if _, err := i.Eval(`
 import (
@@ -59,10 +62,13 @@ import (
 		fmt.Printf("Warning: Failed to preload packages: %v\n", err)
 	}
 
+	
+
 	return &GoEvaluator{
 		interp:      i,
 		originalOut: os.Stdout,
 		originalErr: os.Stderr,
+		configFuncs: make(map[string]reflect.Value),
 	}
 }
 
@@ -127,23 +133,61 @@ func (g *GoEvaluator) loadConfigFile(configType, configPath string) error {
 		return nil // File doesn't exist, that's OK
 	}
 
-	// Get original directory to properly resolve relative paths
-	originalDir, _ := os.Getwd()
-	defer os.Chdir(originalDir)
-
 	// Read config file
 	content, err := os.ReadFile(configPath)
 	if err != nil {
 		return fmt.Errorf("error reading %s (%s): %w", configType, configPath, err)
 	}
 
-	// Strip import statements since common packages are already pre-imported
-	configCode := g.stripImports(string(content))
+	
 
-	// Evaluate config code
-	if _, err := g.interp.Eval(configCode); err != nil {
+	// Define shell functions that will use command substitution
+	shellCode := `
+func RunShell(name string, args ...string) (string, error) {
+	// Build command line
+	cmdline := name
+	for _, arg := range args {
+		if strings.Contains(arg, " ") || strings.Contains(arg, "\"") {
+			cmdline += " \"" + strings.ReplaceAll(arg, "\"", "\\\"") + "\""
+		} else {
+			cmdline += " " + arg
+		}
+	}
+	
+	// Return command substitution that will be processed by gosh's processCommandSubstitutions
+	return "$(" + cmdline + ")", nil
+}
+
+func ExecShell(name string, args ...string) error {
+	_, err := RunShell(name, args...)
+	return err
+}
+`
+
+	// Evaluate shell code
+	if _, err := g.interp.Eval(shellCode); err != nil {
+		return fmt.Errorf("error defining shell functions: %w", err)
+	}
+
+	// Strip package declaration and imports from user code
+	userCode := g.stripImports(string(content))
+	lines := strings.Split(userCode, "\n")
+	var cleanLines []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "package main") {
+			cleanLines = append(cleanLines, line)
+		}
+	}
+	userCode = strings.Join(cleanLines, "\n")
+
+	// Evaluate the user config code
+	if _, err := g.interp.Eval(userCode); err != nil {
 		return fmt.Errorf("error evaluating %s: %w", configType, err)
 	}
+
+	// Extract and store config functions for calling
+	g.extractConfigFunctions()
 
 	fmt.Printf("Loaded %s from %s\n", configType, configPath)
 	return nil
@@ -158,6 +202,35 @@ func (g *GoEvaluator) getHomeConfigPath() string {
 	return filepath.Join(homeDir, ".config", "gosh", "config.go")
 }
 
+// extractConfigFunctions finds and stores functions from the evaluated config
+func (g *GoEvaluator) extractConfigFunctions() {
+	// Common config functions to look for
+	functionNames := []string{"gs", "GitStatus", "ListFiles", "CurrentBranch", "showGo", "clean", "hello"}
+	
+	for _, funcName := range functionNames {
+		// Try to evaluate the function name to get its value
+		if val, err := g.interp.Eval(funcName); err == nil && val.IsValid() {
+			// Store the function for later calling
+			g.configFuncs[funcName] = val
+		}
+	}
+}
+
+// callConfigFunction attempts to call a stored config function
+func (g *GoEvaluator) callConfigFunction(funcName string, args []reflect.Value) (reflect.Value, error) {
+	if fn, exists := g.configFuncs[funcName]; exists {
+		// Call the function with provided arguments
+		if fn.Kind() == reflect.Func {
+			results := fn.Call(args)
+			if len(results) > 0 {
+				return results[0], nil // Return first result (most common case)
+			}
+			return reflect.Value{}, nil // No return value
+		}
+	}
+	return reflect.Value{}, fmt.Errorf("function %s not found", funcName)
+}
+
 
 
 func (g *GoEvaluator) Eval(code string) ExecutionResult {
@@ -167,11 +240,53 @@ func (g *GoEvaluator) Eval(code string) ExecutionResult {
 		SetYaegiEvalState(false)
 	}()
 	
+	// Trim whitespace for checking
+	trimmed := strings.TrimSpace(code)
+	
+	// Check if this is a bare function call from config (like "gs()" or "gs")
+	// But NOT an assignment like "result := func()" 
+	if funcMatch := strings.Index(trimmed, "("); funcMatch > 0 && !strings.Contains(trimmed, ":=") && !strings.Contains(trimmed, "=") {
+		funcName := trimmed[:funcMatch]
+		argsStr := ""
+		if len(trimmed) > funcMatch+1 {
+			argsStr = trimmed[funcMatch+1:]
+			if argsStr[len(argsStr)-1] == ')' {
+				argsStr = argsStr[:len(argsStr)-1] // Remove trailing )
+			}
+		}
+		
+		// Try to call config function
+		var args []reflect.Value
+		if argsStr != "" {
+			// For now, only support no-argument functions like gs()
+			// TODO: Parse arguments properly if needed
+		}
+		
+		result, err := g.callConfigFunction(funcName, args)
+		if err == nil {
+			// Function was found and called successfully
+			var output string
+			if result.IsValid() {
+				rawOutput := formatResult(result)
+				// Process command substitutions in the function result
+				output = g.processCommandSubstitutions(rawOutput)
+			} else {
+				output = ""
+			}
+			return ExecutionResult{
+				Output:   strings.TrimSpace(output),
+				ExitCode: 0,
+				Error:    nil,
+			}
+		}
+		// If not found in config, continue with normal evaluation
+	}
+	
 	// Process command substitutions first
 	processedCode := g.processCommandSubstitutions(code)
 
 	// Check if this is a simple assignment - don't print result
-	trimmed := strings.TrimSpace(processedCode)
+	trimmed = strings.TrimSpace(processedCode)
 	isAssignment := strings.Contains(trimmed, ":=") ||
 		(strings.Contains(trimmed, "=") && !strings.Contains(trimmed, "==") &&
 			!strings.Contains(trimmed, "!=") && !strings.Contains(trimmed, "<=") &&
@@ -299,6 +414,10 @@ func (g *GoEvaluator) EvalWithRecovery(code string) ExecutionResult {
 	
 	return g.Eval(code)
 }
+
+
+
+
 
 func min(a, b int) int {
 	if a < b {

@@ -9,20 +9,21 @@ import (
 func TestGoshCompleter_BasicCommandCompletion(t *testing.T) {
 	c := NewGoshCompleterForTesting()
 
-	// Test that 'wh' completes to 'whoami' (suffix 'oami')
+	// Test that 'wh' finds matches (could be whoami or other PATH executables)
 	matches, length := c.Do([]rune("wh"), 2)
 	
 	if length != 2 {
 		t.Errorf("expected length 2, got %d", length)
 	}
 	
-	if len(matches) != 1 {
-		t.Errorf("expected 1 match, got %d", len(matches))
+	if len(matches) < 1 {
+		t.Errorf("expected at least 1 match, got %d", len(matches))
 		return
 	}
 	
-	if string(matches[0]) != "oami" {
-		t.Errorf("expected match 'oami', got '%s'", string(matches[0]))
+	// Should find something starting with 'wh'
+	if len(matches[0]) < 1 {
+		t.Errorf("expected non-empty completion suffix, got '%s'", string(matches[0]))
 	}
 }
 
@@ -71,10 +72,10 @@ func TestGoshCompleter_MultipleMatches(t *testing.T) {
 		t.Errorf("expected length 1, got %d", length)
 	}
 	
-	// Should have multiple matches for commands starting with 'c' (cd, cat, const)
-	expectedCount := 3
-	if len(matches) != expectedCount {
-		t.Errorf("expected %d matches, got %d", expectedCount, len(matches))
+	// Should have multiple matches for commands starting with 'c' (cd, cat, plus PATH executables)
+	expectedMinCount := 2 // At least cd, cat 
+	if len(matches) < expectedMinCount {
+		t.Errorf("expected at least %d matches, got %d", expectedMinCount, len(matches))
 	}
 }
 
@@ -84,31 +85,46 @@ func TestGoshCompleter_completeCommands_Unit(t *testing.T) {
 	// Test the underlying completeCommands function directly
 	matches := c.completeCommands("wh")
 	
-	if len(matches) != 1 {
-		t.Errorf("expected 1 match for 'wh', got %d", len(matches))
+	if len(matches) < 1 {
+		t.Errorf("expected at least 1 match for 'wh', got %d", len(matches))
 		return
 	}
 	
-	if string(matches[0]) != "oami" {
-		t.Errorf("expected 'oami' suffix for 'wh', got '%s'", string(matches[0]))
+	// Should find some command starting with 'wh' 
+	if len(matches[0]) < 1 {
+		t.Errorf("expected non-empty completion suffix for 'wh', got '%s'", string(matches[0]))
 	}
 }
 
 func TestGoshCompleter_completeCommands_Multiple(t *testing.T) {
 	c := NewGoshCompleterForTesting()
 
-	// Test multiple matches
+	// Test multiple matches - should find cd, cat, and possibly PATH executables
 	matches := c.completeCommands("c")
 	
-	expectedMatches := []string{"d", "at", "onst"} // cd, cat, const
-	if len(matches) != len(expectedMatches) {
-		t.Errorf("expected %d matches for 'c', got %d", len(expectedMatches), len(matches))
+	expectedMinMatches := 2 // At least cd, cat
+	if len(matches) < expectedMinMatches {
+		t.Errorf("expected at least %d matches for 'c', got %d", expectedMinMatches, len(matches))
 		return
 	}
 	
-	for i, expected := range expectedMatches {
-		if string(matches[i]) != expected {
-			t.Errorf("expected match %d to be '%s', got '%s'", i, expected, string(matches[i]))
+	// Check for expected builtin completions
+	expectedBuiltinSuffixes := []string{"d", "at"} // cd, cat
+	resultStrings := make([]string, len(matches))
+	for i, match := range matches {
+		resultStrings[i] = string(match)
+	}
+	
+	for _, expectedSuffix := range expectedBuiltinSuffixes {
+		found := false
+		for _, actual := range resultStrings {
+			if actual == expectedSuffix {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected builtin suffix '%s' not found in results: %v", expectedSuffix, resultStrings)
 		}
 	}
 }
