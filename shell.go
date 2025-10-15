@@ -3,7 +3,6 @@
 package main
 
 import (
-	"bytes"
 	"os"
 	"os/exec"
 	"strings"
@@ -11,33 +10,20 @@ import (
 
 // Shell API functions available to user config
 
-// RunShell executes a command and returns its output as a string
+// RunShell executes a command and returns its output as a string with command substitution
 func RunShell(name string, args ...string) (string, error) {
-	// This won't work without access to global state
-	// For now, revert to the simple implementation
-	cmd := exec.Command(name, args...)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	
-	// Special handling for git status with colors
-	if name == "git" && len(args) > 0 && args[0] == "status" {
-		cmd.Env = append(os.Environ(), "GIT_COLOR=always", "TERM=xterm-256color")
-		} else if name == "env" && len(args) >= 3 && args[len(args)-2] == "git" && args[len(args)-1] == "status" {
-		// Convert env GIT_COLOR=always git status to git status with env
-		cmd = exec.Command("git", "status")
-		envVars := []string{}
-		for _, arg := range args[:len(args)-2] {
-			if strings.HasPrefix(arg, "GIT_COLOR=") || strings.HasPrefix(arg, "TERM=") {
-				envVars = append(envVars, arg)
-			}
-		}
-		envVars = append(envVars, "GIT_COLOR=always", "TERM=xterm-256color")
-		cmd.Env = append(os.Environ(), envVars...)
+	// Return a command substitution string that will be processed by the evaluator
+	var cmdStr strings.Builder
+	cmdStr.WriteString("$(")
+	cmdStr.WriteString(name)
+	for _, arg := range args {
+		cmdStr.WriteString(" ")
+		cmdStr.WriteString(arg)
 	}
+	cmdStr.WriteString(")")
 	
-	err := cmd.Run()
-	return out.String(), err
+	// Debug: return the raw string for testing
+	return cmdStr.String(), nil
 }
 
 // ExecShell executes a command and connects it directly to stdin/stdout/stderr

@@ -25,8 +25,9 @@ func (p *ProcessSpawner) Execute(command string, args []string) ExecutionResult 
 	var cmd *exec.Cmd
 	
 	// Handle both direct git status calls and env GIT_COLOR=always git status calls
+	// Handle both direct git status calls and env GIT_COLOR=always git status calls
 	isGitStatus := (command == "git" && len(args) > 0 && args[0] == "status") ||
-		(command == "env" && len(args) >= 3 && args[len(args)-2] == "git" && args[len(args)-1] == "status")
+		(command == "env" && len(args) >= 2 && args[len(args)-1] == "status" && args[len(args)-2] == "git")
 	
 	if isGitStatus {
 		// Force git status to use colors
@@ -37,10 +38,8 @@ func (p *ProcessSpawner) Execute(command string, args []string) ExecutionResult 
 			// Extract git from the args and run it directly with color env vars
 			cmd = exec.Command("git", "status")
 			for _, arg := range args {
-				if strings.HasPrefix(arg, "GIT_COLOR=") {
-					env = append(env, arg)
-				}
-				if strings.HasPrefix(arg, "TERM=") {
+				if strings.HasPrefix(arg, "GIT_COLOR=") || strings.HasPrefix(arg, "TERM=") ||
+				   strings.HasPrefix(arg, "CLICOLOR=") || strings.HasPrefix(arg, "CLICOLOR_FORCE=") {
 					env = append(env, arg)
 				}
 			}
@@ -51,18 +50,45 @@ func (p *ProcessSpawner) Execute(command string, args []string) ExecutionResult 
 			if !containsEnv(env, "TERM") {
 				env = append(env, "TERM=xterm-256color")
 			}
+			if !containsEnv(env, "CLICOLOR") {
+				env = append(env, "CLICOLOR=1")
+			}
+			if !containsEnv(env, "CLICOLOR_FORCE") {
+				env = append(env, "CLICOLOR_FORCE=1")
+			}
 		} else {
 			// Direct git status call
-			env = append(env, "GIT_COLOR=always")
-			env = append(env, "TERM=xterm-256color")
+			env = append(env, "GIT_COLOR=always", "TERM=xterm-256color", "CLICOLOR=1", "CLICOLOR_FORCE=1")
 			cmd = exec.Command(command, args...)
 		}
 		
 		cmd.Dir = p.state.WorkingDirectory
 		cmd.Env = env
 		cmd.Stdin = os.Stdin
+	} else if command == "ls" {
+		// Handle ls with colors
+		env := p.state.EnvironmentSlice()
+		env = append(env, "CLICOLOR=1", "CLICOLOR_FORCE=1", "TERM=xterm-256color")
+		cmd = exec.Command(command, args...)
+		cmd.Dir = p.state.WorkingDirectory
+		cmd.Env = env
+		cmd.Stdin = os.Stdin
+	} else if wantsColorForCommand(command, args) {
+		// General color support for other commands
+		env := p.state.EnvironmentSlice()
+		env = append(env, "CLICOLOR=1", "CLICOLOR_FORCE=1", "TERM=xterm-256color", "FORCE_COLOR=1")
 		
+		// Special handling for git commands
+		if command == "git" {
+			if !containsEnv(env, "GIT_COLOR") {
+				env = append(env, "GIT_COLOR=always")
+			}
+		}
 		
+		cmd = exec.Command(command, args...)
+		cmd.Dir = p.state.WorkingDirectory
+		cmd.Env = env
+		cmd.Stdin = os.Stdin
 	} else {
 		cmd = exec.Command(command, args...)
 		cmd.Dir = p.state.WorkingDirectory
@@ -108,12 +134,6 @@ func (p *ProcessSpawner) Execute(command string, args []string) ExecutionResult 
 func (p *ProcessSpawner) ExecuteInteractive(command string, args []string) ExecutionResult {
 	
 
-	// Expand shell variables in arguments
-	expandedArgs := make([]string, len(args))
-	for i, arg := range args {
-		expandedArgs[i] = p.expandShellVariables(arg)
-	}
-	
 	// Use full path if available, otherwise fall back to command name
 	commandPath := command
 	if fullPath, found := FindInPath(command, p.state.Environment["PATH"]); found {
@@ -121,9 +141,69 @@ func (p *ProcessSpawner) ExecuteInteractive(command string, args []string) Execu
 		
 	}
 	
-	cmd := exec.Command(commandPath, expandedArgs...)
+	// Add color environment variables for commands that support colors
+	env := p.state.EnvironmentSlice()
+	var modifiedArgs []string
+	
+	if wantsColorForCommand(command, args) {
+		if !containsEnv(env, "CLICOLOR") {
+			env = append(env, "CLICOLOR=1")
+		}
+		if !containsEnv(env, "CLICOLOR_FORCE") {
+			env = append(env, "CLICOLOR_FORCE=1")
+		}
+		if !containsEnv(env, "TERM") {
+			env = append(env, "TERM=xterm-256color")
+		}
+		if !containsEnv(env, "FORCE_COLOR") {
+			env = append(env, "FORCE_COLOR=1")
+		}
+		
+		// Special handling for ls - add --color=always flag if not present
+		if command == "ls" {
+			modifiedArgs = make([]string, len(args))
+			copy(modifiedArgs, args)
+			hasColorFlag := false
+			for _, arg := range args {
+				if arg == "--color=always" || arg == "--color" || strings.HasPrefix(arg, "--color=") {
+					hasColorFlag = true
+					break
+				}
+			}
+			if !hasColorFlag {
+				modifiedArgs = append(modifiedArgs, "--color=always")
+			}
+		}
+		
+		// Special handling for git commands
+		if command == "git" {
+			if !containsEnv(env, "GIT_COLOR") {
+				env = append(env, "GIT_COLOR=always")
+			}
+		}
+	}
+	
+	// Expand shell variables in arguments
+	var finalArgs []string
+	if len(modifiedArgs) > 0 {
+		// Use modified args (e.g., with --color=always added for ls)
+		finalArgs = make([]string, len(modifiedArgs))
+		copy(finalArgs, modifiedArgs)
+		for i, arg := range finalArgs {
+			finalArgs[i] = p.expandShellVariables(arg)
+		}
+	} else {
+		// Use original args
+		finalArgs = make([]string, len(args))
+		copy(finalArgs, args)
+		for i, arg := range finalArgs {
+			finalArgs[i] = p.expandShellVariables(arg)
+		}
+	}
+	
+	cmd := exec.Command(commandPath, finalArgs...)
 	cmd.Dir = p.state.WorkingDirectory
-	cmd.Env = p.state.EnvironmentSlice()
+	cmd.Env = env
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -208,5 +288,54 @@ func containsEnv(env []string, key string) bool {
 			return true
 		}
 	}
+	return false
+}
+
+// wantsColorForCommand determines if a command should be forced to use colors
+func wantsColorForCommand(command string, args []string) bool {
+	// Commands that commonly support color output
+	coloredCommands := map[string]bool{
+		"ls":      true,
+		"grep":    true,
+		"git":     true,
+		"docker":  true,
+		"npm":     true,
+		"yarn":    true,
+		"node":    true,
+		"python":  true,
+		"pip":     true,
+		"curl":    true,
+		"wget":    true,
+		"bat":     true,
+		"exa":     true,
+		"rg":      true,
+		"fd":      true,
+		"tree":    true,
+	}
+	
+	// Check if command is in our colored commands list
+	if coloredCommands[command] {
+		return true
+	}
+	
+	// Special handling for git subcommands
+	if command == "git" && len(args) > 0 {
+		gitColoredSubcommands := map[string]bool{
+			"status":      true,
+			"diff":        true,
+			"log":         true,
+			"show":        true,
+			"branch":      true,
+			"stash":       true,
+			"blame":       true,
+		}
+		return gitColoredSubcommands[args[0]]
+	}
+	
+	// Check for commands with --color flag support
+	if command == "grep" || command == "rg" || command == "ls" {
+		return true
+	}
+	
 	return false
 }
