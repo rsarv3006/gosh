@@ -38,14 +38,15 @@ func (r *Router) Route(input string) (InputType, string, []string) {
 		return InputTypeBuiltin, command, args
 	}
 
+	// Check for Go syntax patterns BEFORE shell command check
+	// This is critical - keywords like 'func' should NOT be treated as shell commands
+	if r.looksLikeGoCode(input) {
+		return InputTypeGo, input, nil
+	}
+
 	// Check if it looks like a shell command
 	if r.looksLikeShellCommand(input) {
 		return InputTypeCommand, command, args
-	}
-
-	// Check for Go syntax patterns BEFORE fallback
-	if r.looksLikeGoCode(input) {
-		return InputTypeGo, input, nil
 	}
 
 	// Default to Go evaluation - safer fallback

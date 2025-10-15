@@ -286,6 +286,29 @@ func (g *GoEvaluator) Eval(code string) ExecutionResult {
 	}
 }
 
+// EvalWithRecovery provides additional safety against yaegi crashes
+func (g *GoEvaluator) EvalWithRecovery(code string) ExecutionResult {
+	// Add an outer layer of recovery
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "\n🚨 CRITICAL: yaegi interpreter crashed!\n")
+			fmt.Fprintf(os.Stderr, "🚨 ERROR: Go evaluation may be unstable. Consider restarting.\n")
+			fmt.Fprintf(os.Stderr, "🚨 ERROR: Last command was: %s\n", code[:min(len(code), 50)])
+		}
+	}()
+	
+	return g.Eval(code)
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// restartInterpreter removed for simplicity - just provide crash recovery
+
 // processCommandSubstituions replaces $(command) with string literals containing command output
 func (g *GoEvaluator) processCommandSubstitutions(code string) string {
 	for {

@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -16,32 +17,51 @@ import (
 func RunREPL(state *ShellState, evaluator *GoEvaluator, spawner *ProcessSpawner, builtins *BuiltinHandler) error {
 	router := NewRouter(builtins, state)
 
-	// Setup readline with multiline support
-	rl, err := readline.NewEx(&readline.Config{
-		AutoComplete: NewGoshCompleter(),
-	})
-	if err != nil {
-		return err
-	}
-	defer rl.Close()
-
 	// Setup signal handling
 	setupSignals(state)
 
-	for !state.ShouldExit {
-		// Set prompt
-		rl.SetPrompt(state.GetPrompt())
+	// Try readline first, fallback to basic mode if it fails
+	rl, useReadline := setupReadlineWithFallback()
+	if useReadline {
+		defer rl.Close()
+	} else {
+		fmt.Fprintln(os.Stderr, "\n🚨 Readline unavailable, using basic mode. Arrow keys and tab completion disabled.")
+		fmt.Fprint(os.Stderr, "Check your terminal (TERM=$TERM) or ~/.inputrc configuration.\n")
+	}
 
-		// Read input with multiline support
-		input, err := rl.Readline()
-		if err != nil {
-			if err == readline.ErrInterrupt {
+	for !state.ShouldExit {
+		var input string
+		var err error
+
+		if useReadline {
+			// Use enhanced readline mode
+			rl.SetPrompt(state.GetPrompt())
+			input, err = rl.Readline()
+			if err != nil {
+				if err == readline.ErrInterrupt {
+					continue
+				}
+				if err == io.EOF {
+					break
+				}
+				// Readline error - try to fall back
+				fmt.Fprintln(os.Stderr, "\n🚨 Readline error, switching to basic mode...")
+				useReadline = false
 				continue
 			}
-			if err == io.EOF {
-				break
+		} else {
+			// Use basic stdin mode
+			fmt.Print(state.GetPrompt())
+			reader := bufio.NewReader(os.Stdin)
+			input, err = reader.ReadString('\n')
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				fmt.Fprintln(os.Stderr, "\n🚨 Input error, continuing...")
+				continue
 			}
-			return err
+			input = strings.TrimSuffix(input, "\n")
 		}
 
 		// Skip empty lines
@@ -50,44 +70,30 @@ func RunREPL(state *ShellState, evaluator *GoEvaluator, spawner *ProcessSpawner,
 		}
 
 		// Handle multiline input accumulation
-		for !isComplete(input) {
-			// Set continuation prompt
-			rl.SetPrompt("... ")
-
-			// Read next line
-			line, err := rl.Readline()
-			if err != nil {
-				break
-			}
-
-			// Add continue marker for readability
-			input += "\n" + line
-		}
-
-		// Route and execute
-		inputType, command, args := router.Route(input)
-
-		var result ExecutionResult
-
-		switch inputType {
-		case InputTypeBuiltin:
-			result = builtins.Execute(command, args)
-
-		case InputTypeGo:
-			result = evaluator.Eval(input)
-
-		case InputTypeCommand:
-			// Check if command exists
-			if _, found := FindInPath(command, state.Environment["PATH"]); !found {
-				result = ExecutionResult{
-					Output:   fmt.Sprintf("gosh: command not found: %s", command),
-					ExitCode: 127,
-					Error:    fmt.Errorf("command not found: %s", command),
+		if useReadline {
+			for !isComplete(input) {
+				rl.SetPrompt("... ")
+				line, err := rl.Readline()
+				if err != nil {
+					break
 				}
-			} else {
-				result = spawner.ExecuteInteractive(command, args)
+				input += "\n" + line
+			}
+		} else {
+			// Basic multiline support without fancy prompts
+			for !isComplete(input) {
+				fmt.Print("... ")
+				reader := bufio.NewReader(os.Stdin)
+				line, err := reader.ReadString('\n')
+				if err != nil {
+					break
+				}
+				input += "\n" + strings.TrimSuffix(line, "\n")
 			}
 		}
+
+		// Route and execute with recovery
+		result := routeAndExecuteWithRecovery(router, evaluator, spawner, builtins, input, state)
 
 		// Display output with colors
 		if result.Output != "" {
@@ -192,17 +198,78 @@ func looksLikePathCompletion(input string) bool {
 	return false
 }
 
+// setupReadlineWithFallback attempts to setup readline with graceful fallback
+func setupReadlineWithFallback() (*readline.Instance, bool) {
+	rl, err := readline.NewEx(&readline.Config{
+		AutoComplete: NewGoshCompleter(),
+	})
+	if err != nil {
+		return nil, false
+	}
+	return rl, true
+}
+
+// routeAndExecuteWithRecovery adds panic recovery for safe execution
+func routeAndExecuteWithRecovery(router *Router, evaluator *GoEvaluator, spawner *ProcessSpawner, builtins *BuiltinHandler, input string, state *ShellState) ExecutionResult {
+	// Recover from panics during execution
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "\n🚨 Panic recovered: %v\n", r)
+			fmt.Fprintln(os.Stderr, "Type 'exit' to quit or continue with a new command.")
+		}
+	}()
+
+	inputType, command, args := router.Route(input)
+
+	switch inputType {
+	case InputTypeBuiltin:
+		return builtins.Execute(command, args)
+
+	case InputTypeGo:
+		// Add recovery for yaegi crashes
+		return evaluator.EvalWithRecovery(input)
+
+	case InputTypeCommand:
+		// Check if command exists
+		if _, found := FindInPath(command, state.Environment["PATH"]); !found {
+			return ExecutionResult{
+				Output:   fmt.Sprintf("gosh: command not found: %s", command),
+				ExitCode: 127,
+				Error:    fmt.Errorf("command not found: %s", command),
+			}
+		} else {
+			return spawner.ExecuteInteractive(command, args)
+		}
+	}
+
+	return ExecutionResult{ExitCode: 0}
+}
+
 func setupSignals(state *ShellState) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "🚨 Signal handler panic recovered: %v\n", r)
+		}
+	}()
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Fprintf(os.Stderr, "🚨 Signal goroutine panic recovered: %v\n", r)
+			}
+		}()
+
 		for sig := range sigChan {
 			switch sig {
 			case os.Interrupt:
 				// Ctrl+C - interrupt current process or print newline
 				if state.CurrentProcess != nil {
-					state.CurrentProcess.Signal(os.Interrupt)
+					if err := state.CurrentProcess.Signal(os.Interrupt); err != nil {
+						fmt.Fprintf(os.Stderr, "Failed to signal process: %v\n", err)
+					}
 					fmt.Println("^C")
 				} else {
 					fmt.Println("^C")
