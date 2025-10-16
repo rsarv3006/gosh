@@ -5,6 +5,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -18,7 +19,7 @@ func NewBuiltinHandler(state *ShellState) *BuiltinHandler {
 
 func (b *BuiltinHandler) IsBuiltin(command string) bool {
 	switch command {
-	case "cd", "exit", "pwd", "help":
+	case "cd", "exit", "pwd", "help", "init":
 		return true
 	default:
 		return false
@@ -35,6 +36,8 @@ func (b *BuiltinHandler) Execute(command string, args []string) ExecutionResult 
 		return b.pwd(args)
 	case "help":
 		return b.help(args)
+	case "init":
+		return b.initConfig(args)
 	default:
 		return ExecutionResult{
 			Output:   fmt.Sprintf("Unknown builtin: %s", command),
@@ -339,5 +342,98 @@ func (b *BuiltinHandler) help(args []string) ExecutionResult {
 		Output:   fmt.Sprintf("No help available for '%s'", command),
 		ExitCode: 1,
 		Error:    fmt.Errorf("no help available"),
+	}
+}
+
+// initConfig creates the .config/gosh directory with go.mod and template config.go
+func (b *BuiltinHandler) initConfig(args []string) ExecutionResult {
+	homeDir := os.Getenv("HOME")
+	if homeDir == "" {
+		return ExecutionResult{
+			Output:   "Cannot determine home directory",
+			ExitCode: 1,
+			Error:    fmt.Errorf("HOME environment variable not set"),
+		}
+	}
+
+	configDir := filepath.Join(homeDir, ".config", "gosh")
+
+	// Create .config/gosh directory if it doesn't exist
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return ExecutionResult{
+			Output:   fmt.Sprintf("Failed to create config directory: %v", err),
+			ExitCode: 1,
+			Error:    err,
+		}
+	}
+
+	// Create go.mod if it doesn't exist
+	goModPath := filepath.Join(configDir, "go.mod")
+	if _, err := os.Stat(goModPath); os.IsNotExist(err) {
+		// Use the published package with v0.1.0
+		goModContent := `module user-config
+
+go 1.21
+
+// Import gosh_lib for rich shell functions  
+require github.com/rsarv3006/gosh_lib v0.1.0
+`
+		if err := os.WriteFile(goModPath, []byte(goModContent), 0644); err != nil {
+			return ExecutionResult{
+				Output:   fmt.Sprintf("Failed to create go.mod: %v", err),
+				ExitCode: 1,
+				Error:    err,
+			}
+		}
+		fmt.Printf("Created %s\n", goModPath)
+	} else {
+		fmt.Printf("go.mod already exists at %s\n", goModPath)
+	}
+
+	// Create config.go if it doesn't exist
+	configPath := filepath.Join(configDir, "config.go")
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		configContent := `package main
+
+import (
+	"fmt"
+	"github.com/rsarv3006/gosh_lib/shellapi"
+)
+
+func init() {
+	fmt.Println("🚀 gosh config loaded! Manual wrapper system enabled!")
+}
+
+// ==============================================================================
+// MANUAL WRAPPER FUNCTIONS
+// ==============================================================================
+// These are convenient wrapper functions that call shellapi functions.
+// The manual wrapper pattern processes command substitutions automatically.
+
+// Simple utility functions
+func hello() string {
+	return "Hello from gosh!"
+}
+
+`
+		if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+			return ExecutionResult{
+				Output:   fmt.Sprintf("Failed to create config.go: %v", err),
+				ExitCode: 1,
+				Error:    err,
+			}
+		}
+		fmt.Printf("Created %s\n", configPath)
+	} else {
+		fmt.Printf("config.go already exists at %s\n", configPath)
+	}
+
+	// Note: Skip go mod tidy for now since v0.1.0 checksum isn't published yet
+	fmt.Println("📝 Config files created successfully!")
+	fmt.Println("💡 Run 'cd ~/.config/gosh && go mod tidy' manually if needed")
+	return ExecutionResult{
+		Output:   fmt.Sprintf("✅ gosh config directory initialized at %s", configDir),
+		ExitCode: 0,
+		Error:    nil,
 	}
 }
