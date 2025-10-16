@@ -376,7 +376,7 @@ func (b *BuiltinHandler) initConfig(args []string) ExecutionResult {
 go 1.21
 
 // Import gosh_lib for rich shell functions  
-require github.com/rsarv3006/gosh_lib v0.1.0
+require github.com/rsarv3006/gosh_lib v0.2.0
 `
 		if err := os.WriteFile(goModPath, []byte(goModContent), 0644); err != nil {
 			return ExecutionResult{
