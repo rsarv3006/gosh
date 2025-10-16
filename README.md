@@ -47,8 +47,8 @@ gosh
 ### Go Install
 
 ```bash
-# Install the current MVP release
-go install github.com/rsarv3006/gosh@v0.0.1
+# Install the latest release
+go install github.com/rsarv3006/gosh@latest
 
 # Run
 gosh
@@ -339,22 +339,38 @@ go build
 
 **🔧 Phase 4 Complete - Shellapi Integration**:
 
-✅ **Import-based Shellapi Functions (NEW!)**
+✅ **Manual Wrapper System (NEW!)**
 
-gosh now integrates with a comprehensive shell function library via **import-based architecture**. Simply import the shellapi package in your config and instantly get access to 100+ shell-friendly functions.
+gosh v0.2.1 integrates with a comprehensive shell function library via **manual wrapper functions**. Import the shellapi package and create your own convenient wrapper functions for easy REPL access.
 
 ```go
 // ~/.config/gosh/config.go
 package main
 
-import _ "github.com/rsarv3006/gosh_lib/shellapi"  // Import to enable shellapi functions
+import "github.com/rsarv3006/gosh_lib/shellapi"  // Import shellapi functions
 
-// These functions are now available automatically:
-// gosh> listing := $(shellapi.LsColor())            // Colorful ls output
-// gosh> status := $(shellapi.GitStatus())            // Git status
-// gosh> println(shellapi.Success("Build passed!"))   // Colored output
-// gosh> result := $(shellapi.GoBuild())              // Go build
-// gosh> deps := $(shellapi.NpmInstall("lodash"))     // npm install
+// Create manual wrapper functions for convenient REPL access:
+func gs() string {
+    result, _ := shellapi.GitStatus()
+    return result  // Command substitution processed automatically
+}
+
+func ok(msg string) string {
+    return shellapi.Success(msg)
+}
+
+func warn(msg string) string {
+    return shellapi.Warning(msg)
+}
+
+func err(msg string) string {
+    return shellapi.Error(msg)
+}
+
+// Usage examples:
+// gosh> gs()           # Git status with colors
+// gosh> ok("Success!") # Green colored text  
+// gosh> shellapi.GitStatus()  # Direct access also works
 ```
 
 **Available Function Categories:**
@@ -366,18 +382,19 @@ import _ "github.com/rsarv3006/gosh_lib/shellapi"  // Import to enable shellapi 
 - **🏗️ Project Utilities**: `MakeTarget()`, `BuildAndTest()`, `CreateProjectDir()`
 
 **Key Benefits:**
-- **🎯 Import-Based**: Functions only available when explicitly imported (clean namespace)
-- **🧩 Modular**: Choose which function categories you want in your config
-- **💻 IDE Support**: Full autocomplete and intellisense for all functions
-- **🚀 Command Substitution**: All commands return `$(command)` syntax for seamless integration
+- **🎯 Manual Control**: You decide which shellapi functions to expose and how
+- **🧩 Flexible Architecture**: Create custom wrapper functions that fit your workflow
+- **💻 IDE Support**: Full autocomplete and intellisense for all shellapi functions
+- **🚀 Command Substitution**: Both manual wrappers and direct shellapi calls process `$(command)` syntax
 - **🌈 Color Support**: Built-in color formatting functions with proper ANSI escape sequences
+- **🔧 Dual Access**: Use either manual wrapper functions (gs(), ok()) or direct calls (shellapi.GitStatus())
 
 **Quick Setup:**
 ```bash
 # Automatic setup with init command
 gosh> init
 # Creates ~/.config/gosh/ with go.mod and template config
-# Imports shellapi and provides examples to get started
+# Includes manual wrapper examples to get started immediately!
 ```
 
 ## 🚀 Future Plans
