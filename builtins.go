@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 type BuiltinHandler struct {
@@ -19,7 +18,7 @@ func NewBuiltinHandler(state *ShellState) *BuiltinHandler {
 
 func (b *BuiltinHandler) IsBuiltin(command string) bool {
 	switch command {
-	case "cd", "exit", "pwd", "help", "init":
+	case "cd", "exit", "help", "init":
 		return true
 	default:
 		return false
@@ -32,8 +31,6 @@ func (b *BuiltinHandler) Execute(command string, args []string) ExecutionResult 
 		return b.cd(args)
 	case "exit":
 		return b.exit(args)
-	case "pwd":
-		return b.pwd(args)
 	case "help":
 		return b.help(args)
 	case "init":
@@ -113,21 +110,6 @@ func (b *BuiltinHandler) exit(args []string) ExecutionResult {
 	}
 }
 
-func (b *BuiltinHandler) pwd(args []string) ExecutionResult {
-	output := b.state.WorkingDirectory
-	if len(args) > 0 && args[0] == "-L" {
-		if wd, err := os.Getwd(); err == nil {
-			output = wd
-		}
-	}
-
-	return ExecutionResult{
-		Output:   strings.TrimSpace(output),
-		ExitCode: 0,
-		Error:    nil,
-	}
-}
-
 func (b *BuiltinHandler) help(args []string) ExecutionResult {
 	if len(args) == 0 {
 		// General help
@@ -135,7 +117,6 @@ func (b *BuiltinHandler) help(args []string) ExecutionResult {
 			Output: "gosh - Go Shell with yaegi interpreter\n\n" +
 				"COMMANDS:\n" +
 				"  cd [DIR]          Change directory to DIR (or home if no DIR)\n" +
-				"  pwd               Print current working directory\n" +
 				"  exit [CODE]        Exit shell with optional exit code\n" +
 				"  help [COMMAND]    Show help for COMMAND, or this general help\n\n" +
 				"CONFIGURATION:\n" +
@@ -182,19 +163,6 @@ func (b *BuiltinHandler) help(args []string) ExecutionResult {
 				"    cd ~/projects        # Change to projects directory\n" +
 				"    cd /usr/local        # Change to absolute path\n" +
 				"    cd ..               # Change to parent directory",
-			ExitCode: 0, Error: nil,
-		}
-	}
-
-	if command == "pwd" {
-		return ExecutionResult{
-			Output: "pwd - Print Working Directory\n\n" +
-				"USAGE:\n" +
-				"    pwd [-L]\n\n" +
-				"DESCRIPTION:\n" +
-				"    Print the full pathname of the current working directory.\n\n" +
-				"OPTIONS:\n" +
-				"    -L    Print logical path (resolve symlinks)",
 			ExitCode: 0, Error: nil,
 		}
 	}

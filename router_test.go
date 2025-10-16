@@ -107,11 +107,6 @@ func TestRouter_BuiltinRouting(t *testing.T) {
 			expected: InputTypeBuiltin,
 		},
 		{
-			name:     "pwd builtin",
-			input:    "pwd",
-			expected: InputTypeBuiltin,
-		},
-		{
 			name:     "help builtin",
 			input:    "help",
 			expected: InputTypeBuiltin,
