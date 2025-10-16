@@ -8,6 +8,9 @@ require (
 	github.com/traefik/yaegi v0.16.1
 )
 
+require github.com/rsarv3006/gosh_lib v0.0.0-20251016031855-5eca6bd21eba // indirect
+
+// Add gosh_lib dependency
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/charmbracelet/colorprofile v0.2.3-0.20250311203215-f60798e515dc // indirect

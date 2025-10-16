@@ -181,6 +181,37 @@ func ExecShell(name string, args ...string) error {
 	}
 	userCode = strings.Join(cleanLines, "\n")
 
+	// Check for shellapi usage (in stripped code, imports are removed but shellapi.* calls remain)
+	if strings.Contains(userCode, "shellapi.") {
+		// Define shellapi functions directly in the global scope
+		shellapiBridge := `
+// Shellapi functions provided by gosh
+var shellapi = struct {
+	GitStatus func() (string, error)
+	LsColor func() (string, error)
+	GoBuild func() (string, error)
+	GoTest func() (string, error)
+	Success func(string) string
+	Warning func(string) string
+	Error func(string) string
+}{
+	GitStatus: func() (string, error) { return "$(git status)", nil },
+	LsColor: func() (string, error) { return "$(ls --color=always)", nil },
+	GoBuild: func() (string, error) { return "$(go build)", nil },
+	GoTest: func() (string, error) { return "$(go test ./...)", nil },
+	Success: func(text string) string { return "\033[32m" + text + "\033[0m" },
+	Warning: func(text string) string { return "\033[33m" + text + "\033[0m" },
+	Error: func(text string) string { return "\033[31m" + text + "\033[0m" },
+}
+`
+		if _, err := g.interp.Eval(shellapiBridge); err != nil {
+			return fmt.Errorf("error providing shellapi bridge: %w", err)
+		}
+		
+		// Remove shellapi imports from user code since we provide the bridge
+		userCode = strings.ReplaceAll(userCode, `"github.com/rsarv3006/gosh_lib/shellapi"`, "// shellapi bridge provided")
+	}
+
 	// Evaluate the user config code
 	if _, err := g.interp.Eval(userCode); err != nil {
 		return fmt.Errorf("error evaluating %s: %w", configType, err)
@@ -380,7 +411,13 @@ func (g *GoEvaluator) Eval(code string) ExecutionResult {
 			}
 
 			if shouldPrint {
-				capturedOutput = formatResult(unwrapped)
+				formattedResult := formatResult(unwrapped)
+				// Check if result contains command substitution and process it
+				if strings.HasPrefix(formattedResult, "$(") && strings.HasSuffix(formattedResult, ")") {
+					capturedOutput = g.processCommandSubstitutionsForDisplay(formattedResult)
+				} else {
+					capturedOutput = formattedResult
+				}
 			}
 		}
 	}

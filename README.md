@@ -22,7 +22,7 @@
 - **Go REPL**: Write Go code directly in your shell with persistent state
 - **Traditional commands**: Just works - `ls`, `git status`, etc.
 - **Hybrid mode**: Mix Go code and shell commands seamlessly
-- **Built-ins**: `cd`, `exit`, `pwd` with path expansion
+- **Built-ins**: `cd`, `exit`, `pwd`, `help`, `init` with path expansion
 - **Signal handling**: Proper Ctrl+C behavior for interrupting processes
 - **macOS & Linux**: Windows users can use PowerShell
 
@@ -212,6 +212,83 @@ Found 12 files
 - Go superpowers when you need them
 - No custom environment syntax to learn
 
+### Shellapi Enhancement - Manual Wrapper Functions
+
+For users wanting advanced shell functionality, gosh supports importing the shellapi library with custom manual wrapper functions:
+
+```go
+// ~/.config/gosh/config.go
+package main
+
+import "github.com/rsarv3006/gosh_lib/shellapi"  // Import shellapi functions
+
+func init() {
+    os.Setenv("PATH", "/opt/homebrew/bin:" + os.Getenv("PATH"))
+    fmt.Println("🚀 Manual wrapper system enabled!")
+}
+
+// Manual wrapper functions for convenient REPL access
+func gs() string {
+    result, _ := shellapi.GitStatus()
+    return result  // Command substitution processed automatically
+}
+
+func ok(msg string) string {
+    return shellapi.Success(msg)
+}
+
+func warn(msg string) string {
+    return shellapi.Warning(msg)
+}
+
+func err(msg string) string {
+    return shellapi.Error(msg)
+}
+
+func build() string {
+    result, _ := shellapi.GoBuild()
+    return result
+}
+func devSetup() string {
+    msg := shellapi.Success("Setting up development environment") + "\n"
+    
+    // Install dependencies
+    goResult, _ := shellapi.GoTidy()
+    msg += goResult + "\n"
+    
+    // Show git status  
+    gitResult, _ := shellapi.GitStatus()
+    msg += gitResult + "\n"
+    
+    return msg
+}
+
+func quickCommit() string {
+    return shellapi.Warning("No changes staged") + "\n"
+}
+
+func buildAndTest() string {
+    buildResult, _ := shellapi.GoBuild()
+    if buildResult == "" {  // Successful build returns empty when processed
+        return shellapi.Success("Build completed") + "\n"
+    }
+    return shellapi.Error("Build failed") + "\n"
+}
+```
+
+**Usage Examples:**
+
+```bash
+gosh> gs()           # Manual wrapper - shows git status with colors
+gosh> ok("Success!") # Manual wrapper - green colored text
+gosh> build()        # Manual wrapper - builds your Go project
+gosh> ls()           # Manual wrapper - colorful file listing
+
+# Direct shellapi access (for advanced users):
+gosh> shellapi.GoTest()  # Returns "$(go test ./...)" string
+gosh> shellapi.DockerPs() # Returns "$(docker ps)" string
+```
+
 ## For Technical Details
 
 📖 **See [ARCHITECTURE.md](ARCHITECTURE.md)** for complete technical documentation including:
@@ -238,7 +315,7 @@ go build
 - ✅ Multiline Go code support (essential for Go!)
 - ✅ Go evaluation with yaegi and state persistence
 - ✅ Command execution with proper signal handling
-- ✅ Built-ins (cd, exit, pwd, help)
+- ✅ Built-ins (cd, exit, pwd, help, init)
 - ✅ Command substitution `$(command)` syntax
 - ✅ Hybrid environment strategy (standard shell + Go extensions)
 - ✅ Smart routing between Go code and shell commands
@@ -254,48 +331,53 @@ go build
 - ✅ Comprehensive test coverage
 - ✅ Enhanced help system
 
-**🚀 Phase 3 In Progress**:
+**🚀 Phase 3 Complete**:
 
 - ✅ Command history navigation (up/down arrows)
-- [ ] Better error messages with line numbers
-- [ ] Git integration in prompt
+- ✅ Better error messages with line numbers
+- ✅ Git integration in prompt
 
-**🔧 Phase 4 Planned**:
+**🔧 Phase 4 Complete - Shellapi Integration**:
 
-**goshlib - Shell-Friendly Go Library**
+✅ **Import-based Shellapi Functions (NEW!)**
 
-Phase 4 introduces an optional utility library that provides shell-like convenience functions while maintaining Go's power and flexibility. Functions can be used both in gosh and as standalone Go imports.
+gosh now integrates with a comprehensive shell function library via **import-based architecture**. Simply import the shellapi package in your config and instantly get access to 100+ shell-friendly functions.
 
-```go
-// One-liner friendly functions (optional via config)
-gosh> result := run("ls -la")           // Auto-trim output
-gosh> files := lsDir(".", "*.go")       // List files by pattern
-gosh> found := grepFile("README", "gosh") // Search file content
-gosh> write("out.txt", "hello")         // Write file
-gosh> content := read("out.txt")         // Read file with auto-trim
-
-// Channel sugar for concurrent operations
-gosh> ch := channel()                   // Create buffered channel
-gosh> async(send, ch, "hello")          // Background send
-gosh> println(recv(ch))                 // Receive value
-
-// String processing utilities
-gosh> cleaned := clean(text)            // Trim whitespace (custom example)
-gosh> parts := split(text, "\n")        // Split by delimiter
-gosh> first := head(parts, 3)           // Get first N items
-```
-
-**Key Benefits:**
-- **Consistent Interface**: Same functions work in gosh and standalone Go programs
-- **Gradual Migration**: Start with one-liners, import library for formal scripts
-- **Optional Loading**: Purists get clean Go by default, enable via `EnableUtils = true` in config
-- **Explicit Power**: All utilities are visible Go code, no hidden magic
-- **Learning Bridge**: Makes Go patterns accessible to shell scripters
-
-**Configuration:**
 ```go
 // ~/.config/gosh/config.go
-var EnableUtils = true  // Set to true to load shell-friendly utility functions
+package main
+
+import _ "github.com/rsarv3006/gosh_lib/shellapi"  // Import to enable shellapi functions
+
+// These functions are now available automatically:
+// gosh> listing := $(shellapi.LsColor())            // Colorful ls output
+// gosh> status := $(shellapi.GitStatus())            // Git status
+// gosh> println(shellapi.Success("Build passed!"))   // Colored output
+// gosh> result := $(shellapi.GoBuild())              // Go build
+// gosh> deps := $(shellapi.NpmInstall("lodash"))     // npm install
+```
+
+**Available Function Categories:**
+- **🔧 Development Tools**: `GoBuild()`, `GoTest()`, `NpmInstall()`, `DockerPs()` 
+- **📁 File Operations**: `Ls()`, `Cat()`, `Find()`, `Grep()`, `Touch()`
+- **🔀 Git Operations**: `GitStatus()`, `GitLog()`, `QuickCommit()`, `GitPull()`
+- **🖥️ System Commands**: `Uptime()`, `Date()`, `Pwd()`, `EnvVar()`
+- **🎨 Color & Formatting**: `Success()`, `Error()`, `Warning()`, `Bold()`
+- **🏗️ Project Utilities**: `MakeTarget()`, `BuildAndTest()`, `CreateProjectDir()`
+
+**Key Benefits:**
+- **🎯 Import-Based**: Functions only available when explicitly imported (clean namespace)
+- **🧩 Modular**: Choose which function categories you want in your config
+- **💻 IDE Support**: Full autocomplete and intellisense for all functions
+- **🚀 Command Substitution**: All commands return `$(command)` syntax for seamless integration
+- **🌈 Color Support**: Built-in color formatting functions with proper ANSI escape sequences
+
+**Quick Setup:**
+```bash
+# Automatic setup with init command
+gosh> init
+# Creates ~/.config/gosh/ with go.mod and template config
+# Imports shellapi and provides examples to get started
 ```
 
 ## 🚀 Future Plans
