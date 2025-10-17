@@ -5,7 +5,6 @@ go 1.21
 require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/chzyer/readline v1.5.1
-	github.com/rsarv3006/gosh_lib v0.0.0-20251016031855-5eca6bd21eba
 	github.com/traefik/yaegi v0.16.1
 )
 

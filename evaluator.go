@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -14,6 +15,8 @@ import (
 	"github.com/traefik/yaegi/interp"
 	"github.com/traefik/yaegi/stdlib"
 )
+
+
 
 type GoEvaluator struct {
 	interp      *interp.Interpreter
@@ -23,6 +26,7 @@ type GoEvaluator struct {
 	originalErr *os.File
 	state       *ShellState
 	spawner     *ProcessSpawner
+	builtins    *BuiltinHandler // Add builtin handler reference
 	configFuncs map[string]reflect.Value // Store config functions for calling
 }
 
@@ -33,11 +37,12 @@ func NewGoEvaluator() *GoEvaluator {
 	os.MkdirAll(tempDir, 0755)
 	os.Chdir(tempDir)
 	
-	// Create interpreter in clean directory
+	// Create interpreter in clean directory with unrestricted access to os/exec
 	i := interp.New(interp.Options{
-		GoPath: os.Getenv("GOPATH"),
-		Stdout: os.Stdout, // Will be updated per-eval
-		Stderr: os.Stderr,
+		GoPath:      os.Getenv("GOPATH"),
+		Stdout:      os.Stdout, // Will be updated per-eval
+		Stderr:      os.Stderr,
+		Unrestricted: true, // Enable access to os/exec and other restricted packages
 	})
 	
 	// Change back to original directory RIGHT AWAY (not in defer)
@@ -49,10 +54,9 @@ func NewGoEvaluator() *GoEvaluator {
 
 	
 
-	// Pre-import common packages for convenience
+	// Pre-import common packages for convenience (but NOT os/exec - will use it via shellapi functions)
 	if _, err := i.Eval(`
 import (
-	"fmt"
 	"os"
 	"strings"
 	"strconv"
@@ -62,56 +66,123 @@ import (
 		fmt.Printf("Warning: Failed to preload packages: %v\n", err)
 	}
 
+	// Inject shellapi functions that use os/exec internally (whitelisted via Go code)
+	shellapiSymbols := map[string]map[string]reflect.Value{
+		"shellapi/shellapi": {
+			"RunShell": reflect.ValueOf(func(name string, args ...string) (string, error) {
+				// Handle cd specially - return marker for actual directory change
+				if name == "cd" && len(args) > 0 {
+					return "@GOSH_INTERNAL_CD:" + args[0], nil
+				}
+				
+				// Execute command using os/exec in Go code (this works - we whitelisted os/exec manually)
+				cmd := exec.Command(name, args...)
+				output, err := cmd.CombinedOutput()
+				return strings.TrimSpace(string(output)), err
+			}),
+			"GitStatus": reflect.ValueOf(func() (string, error) {
+				cmd := exec.Command("git", "status")
+				output, err := cmd.CombinedOutput()
+				return strings.TrimSpace(string(output)), err
+			}),
+			"LsColor": reflect.ValueOf(func() (string, error) {
+				cmd := exec.Command("ls", "--color=auto")
+				output, err := cmd.CombinedOutput()
+				return strings.TrimSpace(string(output)), err
+			}),
+			"GoBuild": reflect.ValueOf(func() (string, error) {
+				cmd := exec.Command("go", "build")
+				output, err := cmd.CombinedOutput()
+				return strings.TrimSpace(string(output)), err
+			}),
+			"GoTest": reflect.ValueOf(func() (string, error) {
+				cmd := exec.Command("go", "test")
+				output, err := cmd.CombinedOutput()
+				return strings.TrimSpace(string(output)), err
+			}),
+			"GoRun": reflect.ValueOf(func() (string, error) {
+				cmd := exec.Command("go", "run", ".")
+				output, err := cmd.CombinedOutput()
+				return strings.TrimSpace(string(output)), err
+			}),
+			"Success": reflect.ValueOf(func(text string) string {
+				return "\033[32m" + text + "\033[0m"
+			}),
+			"Warning": reflect.ValueOf(func(text string) string {
+				return "\033[33m" + text + "\033[0m"
+			}),
+			"Error": reflect.ValueOf(func(text string) string {
+				return "\033[31m" + text + "\033[0m"
+			}),
+		},
+	}
+	
+	// Inject shellapi functions
+	if err := i.Use(shellapiSymbols); err != nil {
+		fmt.Printf("Failed to inject shellapi symbols: %v\n", err)
+	}
+
 	
 
-	return &GoEvaluator{
+	evaluator := &GoEvaluator{
 		interp:      i,
 		originalOut: os.Stdout,
 		originalErr: os.Stderr,
 		configFuncs: make(map[string]reflect.Value),
 	}
+	
+	return evaluator
 }
 
 func (g *GoEvaluator) SetupWithShell(state *ShellState, spawner *ProcessSpawner) {
 	g.state = state
 	g.spawner = spawner
-	
-	// For now, we'll keep it simple and not expose shell APIs directly
-	// Can extend this later with safe wrapper functions
+}
+
+func (g *GoEvaluator) SetupWithBuiltins(builtins *BuiltinHandler) {
+	g.builtins = builtins
 }
 
 func (g *GoEvaluator) stripImports(code string) string {
 	lines := strings.Split(code, "\n")
 	var result []string
 	inImport := false
+	shouldSkip := false
 	
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
+		shouldSkip = false
 		
 		if strings.HasPrefix(trimmed, "import ") {
-			// Skip single-line import
-			if strings.Contains(trimmed, "(") && !strings.Contains(trimmed, ")") {
-				// Start of multi-line import
+			if strings.Contains(line, "github.com/rsarv3006/gosh_lib/shellapi") {
+				// Skip shellapi import specifically
+				shouldSkip = true
+			} else if strings.Contains(trimmed, "(") && !strings.Contains(trimmed, ")") {
+				// Start of multi-line import - don't skip yet
 				inImport = true
-				continue
 			} else {
-				// Single line import - skip it
+				// Single line import (not shellapi) - keep it
+				result = append(result, line)
 				continue
 			}
 		} else if strings.HasPrefix(trimmed, "(") && !inImport {
 			// Start of multi-line import block
 			inImport = true
-			continue
 		} else if trimmed == ")" && inImport {
 			// End of multi-line import block
 			inImport = false
+			result = append(result, line) // Keep the closing paren
 			continue
 		} else if inImport {
-			// Skip lines inside import block
-			continue
+			// Inside multi-line import block, check if it's the shellapi import
+			if strings.Contains(line, "github.com/rsarv3006/gosh_lib/shellapi") {
+				shouldSkip = true
+			}
 		}
 		
-		result = append(result, line)
+		if !shouldSkip {
+			result = append(result, line)
+		}
 	}
 	
 	return strings.Join(result, "\n")
@@ -169,8 +240,10 @@ func ExecShell(name string, args ...string) error {
 		return fmt.Errorf("error defining shell functions: %w", err)
 	}
 
-	// Strip package declaration and imports from user code
-	userCode := g.stripImports(string(content))
+	// Replace shellapi imports with our injected package path BEFORE stripping
+	userCode := strings.ReplaceAll(string(content), `"github.com/rsarv3006/gosh_lib/shellapi"`, `"shellapi/shellapi"`)
+	
+	// Strip package declaration from user code (but keep all imports including shellapi/shellapi)
 	lines := strings.Split(userCode, "\n")
 	var cleanLines []string
 	for _, line := range lines {
@@ -180,48 +253,6 @@ func ExecShell(name string, args ...string) error {
 		}
 	}
 	userCode = strings.Join(cleanLines, "\n")
-
-	// Check for shellapi usage (in stripped code, imports are removed but shellapi.* calls remain)
-	if strings.Contains(userCode, "shellapi.") {
-		// Import the actual shellapi package instead of recreating functions
-		if _, err := g.interp.Eval(`import "github.com/rsarv3006/gosh_lib/shellapi"`); err != nil {
-			// Fallback to basic bridge if package not available
-			shellapiBridge := `
-// Shellapi functions provided by gosh
-var shellapi = struct {
-	GitStatus func() (string, error)
-	LsColor func() (string, error)
-	RunShell func(name string, args ...string) (string, error)
-	Success func(string) string
-	Warning func(string) string
-	Error func(string) string
-}{
-	GitStatus: func() (string, error) { return "$(git status)", nil },
-	LsColor: func() (string, error) { return "$(ls --color=always)", nil },
-	RunShell: func(name string, args ...string) (string, error) {
-		cmd := name
-		for _, arg := range args {
-			if strings.Contains(arg, " ") || strings.Contains(arg, "\"") {
-				cmd += " \"" + strings.ReplaceAll(arg, "\"", "\\\"") + "\""
-			} else {
-				cmd += " " + arg
-			}
-		}
-		return "$(" + cmd + ")", nil
-	},
-	Success: func(text string) string { return "\033[32m" + text + "\033[0m" },
-	Warning: func(text string) string { return "\033[33m" + text + "\033[0m" },
-	Error: func(text string) string { return "\033[31m" + text + "\033[0m" },
-}
-`
-			if _, err := g.interp.Eval(shellapiBridge); err != nil {
-				return fmt.Errorf("error providing shellapi bridge: %w", err)
-			}
-		}
-		
-		// Remove shellapi imports from user code since we provide the import
-		userCode = strings.ReplaceAll(userCode, `"github.com/rsarv3006/gosh_lib/shellapi"`, "// shellapi package imported")
-	}
 
 	// Evaluate the user config code
 	if _, err := g.interp.Eval(userCode); err != nil {
@@ -312,7 +343,20 @@ func (g *GoEvaluator) Eval(code string) ExecutionResult {
 				// Check if result contains command substitution and process it
 				if result.Kind() == reflect.String {
 					stringResult := result.String()
-					if strings.HasPrefix(stringResult, "$(") && strings.HasSuffix(stringResult, ")") {
+					if strings.HasPrefix(stringResult, "@GOSH_INTERNAL_CD:") {
+						// Handle internal cd command
+						path := strings.TrimPrefix(stringResult, "@GOSH_INTERNAL_CD:")
+						if g.builtins != nil {
+							cdResult := g.builtins.cd([]string{path})
+							if cdResult.Error != nil {
+								output = "CD ERROR: " + cdResult.Error.Error()
+							} else {
+								output = "" // Successful cd produces no output
+							}
+						} else {
+							output = "cd command not available in current context"
+						}
+					} else if strings.HasPrefix(stringResult, "$(") && strings.HasSuffix(stringResult, ")") {
 						// For command substitution, process it but return RAW output, not escaped
 						output = g.processCommandSubstitutionsForDisplay(stringResult)
 					} else {
@@ -423,8 +467,20 @@ func (g *GoEvaluator) Eval(code string) ExecutionResult {
 
 			if shouldPrint {
 				formattedResult := formatResult(unwrapped)
-				// Check if result contains command substitution and process it
-				if strings.HasPrefix(formattedResult, "$(") && strings.HasSuffix(formattedResult, ")") {
+				// Check if result contains cd marker and process it
+				if strings.HasPrefix(formattedResult, "@GOSH_INTERNAL_CD:") {
+					path := strings.TrimPrefix(formattedResult, "@GOSH_INTERNAL_CD:")
+					if g.builtins != nil {
+						cdResult := g.builtins.cd([]string{path})
+						if cdResult.Error != nil {
+							capturedOutput = cdResult.Output
+						} else {
+							capturedOutput = "" // Successful cd produces no output
+						}
+					} else {
+						capturedOutput = "cd command not available in current context"
+					}
+				} else if strings.HasPrefix(formattedResult, "$(") && strings.HasSuffix(formattedResult, ")") {
 					capturedOutput = g.processCommandSubstitutionsForDisplay(formattedResult)
 				} else {
 					capturedOutput = formattedResult

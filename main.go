@@ -36,8 +36,10 @@ func main() {
 			state := NewShellState()
 			evaluator := NewGoEvaluator()
 			spawner := NewProcessSpawner(state)
+			builtins := NewBuiltinHandler(state)
 
 			evaluator.SetupWithShell(state, spawner)
+			evaluator.SetupWithBuiltins(builtins)
 
 			// Load config before executing command
 			if err := evaluator.LoadConfig(); err != nil {
@@ -59,6 +61,7 @@ func main() {
 
 	// Setup evaluator with shell access
 	evaluator.SetupWithShell(state, spawner)
+	evaluator.SetupWithBuiltins(builtins)
 
 	fmt.Println(colors.StyleMessage("gosh "+GetVersion()+" - Go shell with yaegi", "welcome") + " (BUILT: " + time.Now().Format("2006-01-02 15:04:05") + ")")
 	fmt.Println(colors.StyleMessage("Type 'exit' to quit, try some Go code or shell commands!", "welcome"))
