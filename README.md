@@ -297,8 +297,175 @@ gosh> shellapi.GitStatus()
 gosh> shellapi.RunShell("ls", "-la")
 ```
 
-**Key Benefits:**
+## 🔧 RunShell Command Documentation
 
+The `shellapi.RunShell` function is the core command execution engine that powers all shellapi functions. It executes real shell commands using Go's `os/exec` and provides flexible command execution with proper output capture.
+
+### **Basic Syntax**
+```go
+result, err := shellapi.RunShell("command", "arg1", "arg2", ...)
+```
+
+### **Command Types**
+
+#### **Standard Shell Commands**
+```go
+// List files with colors
+files, err := shellapi.RunShell("ls", "--color=auto")
+
+// Get current directory
+pwd, err := shellapi.RunShell("pwd")
+
+// Show git status
+status, err := shellapi.RunShell("git", "status")
+```
+
+#### **Directory Changes (Special Handling)**
+```go
+// CD commands return markers that actually change directories
+result, err := shellapi.RunShell("cd", "/path/to/project")
+if err != nil {
+    return "CD ERROR: " + err.Error()
+}
+return result  // Returns @GOSH_INTERNAL_CD:/path/to/project marker
+```
+
+**How CD Integration Works:**
+1. `RunShell("cd", path)` returns a CD marker (`@GOSH_INTERNAL_CD:/path`)
+2. The evaluator detects this marker 
+3. The shell's working directory is actually changed
+4. The change persists across the entire shell session
+
+#### **Development Scripts**
+```go
+// Build project  
+build := shellapi.RunShell("go", "build")
+
+// Run tests  
+tests := shellapi.RunShell("go", "test", "./...")
+
+// Start application
+app := shellapi.RunShell("go", "run", ".")
+```
+
+#### **System Commands**
+```go
+// Get system info
+uptime := shellapi.RunShell("uptime")
+date := shellapi.RunShell("date")
+
+// Process management  
+ps := shellapi.RunShell("ps", "aux")
+
+// Network tools
+ping := shellapi.RunShell("ping", "-c", "3", "google.com")
+```
+
+### **Error Handling Patterns**
+
+#### **Simple Command Execution**
+```go
+func getStatus() string {
+    result, err := shellapi.RunShell("git", "status")
+    if err != nil {
+        return "ERROR: " + err.Error()
+    }
+    return result
+}
+```
+
+#### **Directory Change with Error Handling**
+```go
+func goToProject() string {
+    result, err := shellapi.RunShell("cd", "/Users/rjs/projects/myapp")
+    if err != nil {
+        return "CD ERROR: " + err.Error()  
+    }
+    return result  // Silent success - directory actually changed
+}
+```
+
+#### **Multi-step Operations**
+```go
+func buildAndTest() string {
+    // Build first
+    build, buildErr := shellapi.RunShell("go", "build")
+    if buildErr != nil {
+        return "BUILD FAILED: " + buildErr.Error()
+    }
+    
+    // Then test
+    test, testErr := shellapi.RunShell("go", "test")
+    if testErr != nil {
+        return "TESTS FAILED: " + testErr.Error()
+    }
+    
+    return "✅ Build successful\n" + test
+}
+```
+
+### **Integration Examples**
+
+#### **Custom Shell Functions**
+```go
+func deployTo(prodEnv string) string {
+    msg := "Deploying to " + prodEnv + "...\n"
+    
+    // Check git status
+    status, _ := shellapi.RunShell("git", "status")
+    if status != "" {
+        msg += "⚠️  Working tree not clean:\n" + status
+        return msg
+    }
+    
+    // Deploy
+    result, err := shellapi.RunShell("ansible-playbook", "deploy.yml", "-e", "env="+prodEnv)
+    if err != nil {
+        return "DEPLOY ERROR: " + err.Error()
+    }
+    
+    return msg + "✅ Deployment complete"
+}
+```
+
+#### **Interactive Tools Support**
+```go
+func openEditor() string {
+    // Opens vim - will wait for user input
+    result, err := shellapi.RunShell("nvim", "config.yaml")
+    return result  // ( vim blocks until user quits )
+}
+```
+
+### **Best Practices**
+
+#### **✅ Do:**
+- Use proper error handling for all commands
+- Check `err != nil` before using results
+- Return error messages for better user feedback
+- Use CD markers for directory changes
+- Handle empty/missing output appropriately
+
+#### **❌ Avoid:**
+- Running long-running interactive programs in wrapper functions
+- Assuming commands will always succeed  
+- Ignoring error return values
+- Hard-coding absolute paths in public functions
+
+### **Performance Notes**
+- Commands execute in real shell environment (not command substitution)
+- Output is fully captured and returned as strings
+- Directory changes persist across shell sessions
+- Error messages are captured from stderr and stderr streams
+
+**Key Benefits:**
+- ✅ Real command execution via Go's `os/exec`
+- ✅ Proper stderr/stdout capture
+- ✅ Cross-platform compatibility
+- ✅ Persistent directory state
+- ✅ Full error reporting
+
+**Key Benefits:**
 - ✅ **Real Command Execution**: Functions execute actual commands, not just command substitution strings
 - ✅ **Proper Error Handling**: Full error reporting with actual command errors
 - ✅ **Directory Persistence**: CD commands actually change directories in the shell session
