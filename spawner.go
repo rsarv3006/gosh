@@ -116,9 +116,11 @@ func (p *ProcessSpawner) Execute(command string, args []string) ExecutionResult 
 
 func (p *ProcessSpawner) ExecuteInteractive(command string, args []string) ExecutionResult {
 	commandPath := command
-	if fullPath, found := FindInPath(command, p.state.Environment["PATH"]); found {
-		commandPath = fullPath
-
+	// Don't resolve local paths through PATH - use them directly
+	if !strings.HasPrefix(command, "./") {
+		if fullPath, found := FindInPath(command, p.state.Environment["PATH"]); found {
+			commandPath = fullPath
+		}
 	}
 
 	env := p.state.EnvironmentSlice()

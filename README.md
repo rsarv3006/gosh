@@ -26,6 +26,30 @@
 - **Signal handling**: Proper Ctrl+C behavior for interrupting processes
 - **macOS & Linux**: Windows users can use PowerShell
 
+## Known Issues
+
+### Development Helper Functions (TODO Status)
+
+The shellapi library provides development helper functions like `GoRun()`, `GoBuild()`, `GoTest()`, `NpmRun()`, etc. These functions are currently **disabled** due to fundamental design issues:
+
+- **Problem**: Command substitution `$(command)` is designed to capture output from short-lived commands
+- **Issue**: Development tools can be interactive (like `go run`) or long-running processes
+- **Result**: These functions don't work properly for interactive programs and don't handle signals correctly
+
+**Current workaround**: Use direct shell commands in gosh:
+```bash
+gosh> go run .         # Works directly
+gosh> go build .       # Works directly  
+gosh> npm test         # Works directly
+```
+
+**TODO**: We need to redesign the shellapi helper functions to:
+1. Handle interactive programs properly 
+2. Support proper signal forwarding (Ctrl+C)
+3. Differentiate between output-capturing vs interactive execution
+
+See: [Development Tools issue discussion](https://github.com/rsarv3006/gosh/issues/DEV_HELPERS)
+
 ## Quick Start
 
 ### Homebrew (Recommended)
@@ -414,6 +438,9 @@ gosh> init
 - [ ] LSP integration for Go code editing in the shell
 - [ ] Syntax highlighting for Go code input
 - [ ] Documentation lookup (`go doc` integration)
+
+### Sharp Edges
+- [ ] gosh doesn't handle piped input well
 
 ## Known yaegi Limitations
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -38,6 +39,11 @@ func main() {
 
 			evaluator.SetupWithShell(state, spawner)
 
+			// Load config before executing command
+			if err := evaluator.LoadConfig(); err != nil {
+				fmt.Fprintf(os.Stderr, "Config loading error: %v\n", err)
+			}
+
 			// Use evaluator to execute the command
 			result := evaluator.Eval(command)
 			fmt.Print(result.Output)
@@ -54,7 +60,7 @@ func main() {
 	// Setup evaluator with shell access
 	evaluator.SetupWithShell(state, spawner)
 
-	fmt.Println(colors.StyleMessage("gosh "+GetVersion()+" - Go shell with yaegi", "welcome"))
+	fmt.Println(colors.StyleMessage("gosh "+GetVersion()+" - Go shell with yaegi", "welcome") + " (BUILT: " + time.Now().Format("2006-01-02 15:04:05") + ")")
 	fmt.Println(colors.StyleMessage("Type 'exit' to quit, try some Go code or shell commands!", "welcome"))
 	fmt.Println()
 

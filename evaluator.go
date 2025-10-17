@@ -183,33 +183,44 @@ func ExecShell(name string, args ...string) error {
 
 	// Check for shellapi usage (in stripped code, imports are removed but shellapi.* calls remain)
 	if strings.Contains(userCode, "shellapi.") {
-		// Define shellapi functions directly in the global scope
-		shellapiBridge := `
+		// Import the actual shellapi package instead of recreating functions
+		if _, err := g.interp.Eval(`import "github.com/rsarv3006/gosh_lib/shellapi"`); err != nil {
+			// Fallback to basic bridge if package not available
+			shellapiBridge := `
 // Shellapi functions provided by gosh
 var shellapi = struct {
 	GitStatus func() (string, error)
 	LsColor func() (string, error)
-	GoBuild func() (string, error)
-	GoTest func() (string, error)
+	RunShell func(name string, args ...string) (string, error)
 	Success func(string) string
 	Warning func(string) string
 	Error func(string) string
 }{
 	GitStatus: func() (string, error) { return "$(git status)", nil },
 	LsColor: func() (string, error) { return "$(ls --color=always)", nil },
-	GoBuild: func() (string, error) { return "$(go build)", nil },
-	GoTest: func() (string, error) { return "$(go test ./...)", nil },
+	RunShell: func(name string, args ...string) (string, error) {
+		cmd := name
+		for _, arg := range args {
+			if strings.Contains(arg, " ") || strings.Contains(arg, "\"") {
+				cmd += " \"" + strings.ReplaceAll(arg, "\"", "\\\"") + "\""
+			} else {
+				cmd += " " + arg
+			}
+		}
+		return "$(" + cmd + ")", nil
+	},
 	Success: func(text string) string { return "\033[32m" + text + "\033[0m" },
 	Warning: func(text string) string { return "\033[33m" + text + "\033[0m" },
 	Error: func(text string) string { return "\033[31m" + text + "\033[0m" },
 }
 `
-		if _, err := g.interp.Eval(shellapiBridge); err != nil {
-			return fmt.Errorf("error providing shellapi bridge: %w", err)
+			if _, err := g.interp.Eval(shellapiBridge); err != nil {
+				return fmt.Errorf("error providing shellapi bridge: %w", err)
+			}
 		}
 		
-		// Remove shellapi imports from user code since we provide the bridge
-		userCode = strings.ReplaceAll(userCode, `"github.com/rsarv3006/gosh_lib/shellapi"`, "// shellapi bridge provided")
+		// Remove shellapi imports from user code since we provide the import
+		userCode = strings.ReplaceAll(userCode, `"github.com/rsarv3006/gosh_lib/shellapi"`, "// shellapi package imported")
 	}
 
 	// Evaluate the user config code
@@ -236,7 +247,7 @@ func (g *GoEvaluator) getHomeConfigPath() string {
 // extractConfigFunctions finds and stores functions from the evaluated config
 func (g *GoEvaluator) extractConfigFunctions() {
 	// Common config functions to look for
-	functionNames := []string{"gs", "GitStatus", "ListFiles", "CurrentBranch", "showGo", "clean", "hello"}
+	functionNames := []string{"gs", "build", "test", "run", "goGosh", "GitStatus", "ListFiles", "CurrentBranch", "showGo", "clean", "hello", "RunShell"}
 	
 	for _, funcName := range functionNames {
 		// Try to evaluate the function name to get its value
@@ -566,7 +577,7 @@ func (g *GoEvaluator) processCommandSubstitutions(code string) string {
 		cmd := parts[0]
 		args := parts[1:]
 		
-		spawner := NewProcessSpawner(&ShellState{}) // Use empty state for simple command execution
+		spawner := NewProcessSpawner(g.state) // Use current shell state for proper execution
 		result := spawner.Execute(cmd, args)
 		
 		// Escape the output for Go string literal
