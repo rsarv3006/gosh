@@ -26,29 +26,7 @@
 - **Signal handling**: Proper Ctrl+C behavior for interrupting processes
 - **macOS & Linux**: Windows users can use PowerShell
 
-## Known Issues
 
-### Development Helper Functions (TODO Status)
-
-The shellapi library provides development helper functions like `GoRun()`, `GoBuild()`, `GoTest()`, `NpmRun()`, etc. These functions are currently **disabled** due to fundamental design issues:
-
-- **Problem**: Command substitution `$(command)` is designed to capture output from short-lived commands
-- **Issue**: Development tools can be interactive (like `go run`) or long-running processes
-- **Result**: These functions don't work properly for interactive programs and don't handle signals correctly
-
-**Current workaround**: Use direct shell commands in gosh:
-```bash
-gosh> go run .         # Works directly
-gosh> go build .       # Works directly  
-gosh> npm test         # Works directly
-```
-
-**TODO**: We need to redesign the shellapi helper functions to:
-1. Handle interactive programs properly 
-2. Support proper signal forwarding (Ctrl+C)
-3. Differentiate between output-capturing vs interactive execution
-
-See: [Development Tools issue discussion](https://github.com/rsarv3006/gosh/issues/DEV_HELPERS)
 
 ## Quick Start
 
@@ -406,64 +384,79 @@ go build
 - ✅ Better error messages with line numbers
 - ✅ Git integration in prompt
 
-**🔧 Phase 4 Complete - Shellapi Integration**:
+**🔧 Phase 4 Complete - Working Shellapi Functions**:
 
-✅ **Manual Wrapper System (NEW!)**
-
-gosh v0.2.1 integrates with a comprehensive shell function library via **manual wrapper functions**. Import the shellapi package and create your own convenient wrapper functions for easy REPL access.
+✅ **Real Command Execution (v0.2.2)**
+gosh v0.2.2 features shellapi functions that execute real commands via Go's `os/exec`, providing actual command output and persistent directory changes.
 
 ```go
 // ~/.config/gosh/config.go
 package main
 
-import "github.com/rsarv3006/gosh_lib/shellapi"  // Import shellapi functions
+import (
+    "fmt"
+    "github.com/rsarv3006/gosh_lib/shellapi"
+)
 
-// Create manual wrapper functions for convenient REPL access:
+func init() {
+    fmt.Println("🚀 gosh config loaded! Command execution system enabled!")
+}
+
+// Functions that actually work:
+func build() string {
+    result, err := shellapi.GoBuild()
+    if err != nil {
+        return "BUILD ERROR: " + err.Error()
+    }
+    return "BUILD SUCCESS: " + result  // Real go build execution
+}
+
+func test() string {
+    result, _ := shellapi.GoTest()
+    return result  // Returns actual test output
+}
+
+func goGosh() string {
+    result, _ := shellapi.RunShell("cd", "/Users/rjs/dev/gosh")
+    return result  // Directory actually changes and persists!
+}
+
 func gs() string {
-    result, _ := shellapi.GitStatus()
-    return result  // Command substitution processed automatically
-}
-
-func ok(msg string) string {
-    return shellapi.Success(msg)
-}
-
-func warn(msg string) string {
-    return shellapi.Warning(msg)
-}
-
-func err(msg string) string {
-    return shellapi.Error(msg)
+    result, err := shellapi.GitStatus()
+    if err != nil {
+        return "GIT ERROR: " + err.Error()
+    }
+    return "GIT STATUS:\n" + result  // Real git status with colors
 }
 
 // Usage examples:
-// gosh> gs()           # Git status with colors
-// gosh> ok("Success!") # Green colored text  
-// gosh> shellapi.GitStatus()  # Direct access also works
+// gosh> build()        # Executes real go build with feedback
+// gosh> test()         # Executes real go test with output
+// gosh> goGosh()      # Actually changes directory (persists!)
+// gosh> shellapi.GoBuild()  # Direct access also works
 ```
 
-**Available Function Categories:**
-- **🔧 Development Tools**: `GoBuild()`, `GoTest()`, `NpmInstall()`, `DockerPs()` 
-- **📁 File Operations**: `Ls()`, `Cat()`, `Find()`, `Grep()`, `Touch()`
-- **🔀 Git Operations**: `GitStatus()`, `GitLog()`, `QuickCommit()`, `GitPull()`
-- **🖥️ System Commands**: `Uptime()`, `Date()`, `Pwd()`, `EnvVar()`
-- **🎨 Color & Formatting**: `Success()`, `Error()`, `Warning()`, `Bold()`
-- **🏗️ Project Utilities**: `MakeTarget()`, `BuildAndTest()`, `CreateProjectDir()`
+**Working Features:**
+- **🔧 Development Commands** - `GoBuild()`, `GoTest()`, `GoRun()` execute real Go commands
+- **📁 File Operations** - `LsColor()`, file operations with actual filesystem access
+- **🔀 Git Tools** - `GitStatus()` shows real git repository status  
+- **🖥️ Shell Commands** - `RunShell(cmd, args...)` executes any shell command
+- **🎨 Color Functions** - `Success()`, `Warning()`, `Error()` format output with colors
+- **📂 Directory Changes** - `RunShell("cd", path)` actually changes directories
 
 **Key Benefits:**
-- **🎯 Manual Control**: You decide which shellapi functions to expose and how
-- **🧩 Flexible Architecture**: Create custom wrapper functions that fit your workflow
-- **💻 IDE Support**: Full autocomplete and intellisense for all shellapi functions
-- **🚀 Command Substitution**: Both manual wrappers and direct shellapi calls process `$(command)` syntax
-- **🌈 Color Support**: Built-in color formatting functions with proper ANSI escape sequences
-- **🔧 Dual Access**: Use either manual wrapper functions (gs(), ok()) or direct calls (shellapi.GitStatus())
+- ✅ **Real Command Execution** - Functions use Go's `os/exec` for actual command execution
+- ✅ **Directory Persistence** - CD commands maintain state across shell sessions  
+- ✅ **Proper Error Handling** - Real command errors are captured and returned
+- ✅ **Full Output Capture** - Commands return their actual output and status
+- ✅ **Working Integration** - Direct shellapi access works alongside wrapper functions
 
-**Quick Setup:**
+**Usage Examples:**
 ```bash
-# Automatic setup with init command
-gosh> init
-# Creates ~/.config/gosh/ with go.mod and template config
-# Includes manual wrapper examples to get started immediately!
+gosh> build()        # Executes real go build with feedback
+gosh> test()         # Executes real go test with output
+gosh> goGosh()      # Actually changes directory (persists!)
+gosh> shellapi.GoBuild()  # Direct access also works
 ```
 
 ## 🚀 Future Plans
@@ -480,6 +473,13 @@ gosh> init
 
 - [ ] **Go function autocomplete improvement** - Currently basic tab completion for commands and file paths, need intelligent Go function completion
 - [ ] **Go intellisense implementation** - Code completion, type hints, function signatures for Go code in the REPL
+
+### Shellapi Enhancements - TODO:
+
+- [ ] **Interactive program handling** - Better support for commands like `vim`, `nano` that wait for user input
+- [ ] **Signal forwarding** - Proper Ctrl+C handling for long-running shellapi processes  
+- [ ] **Output streaming** - Real-time output capture for long-running commands
+- [ ] **Background processes** - Support for launching background processes via shellapi
 - [ ] LSP integration for Go code editing in the shell
 - [ ] Syntax highlighting for Go code input
 - [ ] Documentation lookup (`go doc` integration)
