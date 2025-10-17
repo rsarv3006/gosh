@@ -225,17 +225,21 @@ func (b *BuiltinHandler) help(args []string) ExecutionResult {
 				"    ~/.config/gosh/config.go              - Template config with examples\n\n" +
 				"TEMPLATE INCLUDES:\n" +
 				"    • shellapi import for advanced functions\n" +
-				"    • Manual wrapper examples (gs, ok, warn, err, build)\n" +
-				"    • Functions for git status, colored output, project building\n" +
-				"    • Command substitution processing\n\n" +
+				"    • Working shellapi examples (build, test, run, gs)\n" +
+				"    • Directory navigation functions (goGosh, goHome, goConfig)\n" +
+				"    • Real command execution with error handling\n" +
+				"    • Color output functions (ok, warn, err)\n" +
+				"    • Persistent directory changes\n\n" +
 				"AFTER INIT:\n" +
 				"    1. Restart gosh to load the new configuration\n" +
-				"    2. Try: gs()           # Git status with colors\n" +
-				"    3. Try: ok('Success!') # Green success message\n" +
-				"    4. Optionally: cd ~/.config/gosh && go mod tidy\n\n" +
+				"    2. Try: build()       # Execute real go build\n" +
+				"    3. Try: test()        # Execute real go test\n" +
+				"    4. Try: goGosh()      # Navigate to project directory\n" +
+				"    5. Try: gs()          # Real git status with colors\n" +
+				"    6. Try: ok('Done!')  # Green success message\n\n" +
 				"NOTE:\n" +
-				"    The config provides shellapi functions via manual wrapper pattern.\n" +
-				"    This gives you convenient REPL access to 100+ shell functions.",
+				"    The config provides shellapi functions that execute real commands via Go's os/exec.\n" +
+				"    Directory changes persist across shell sessions. Functions work reliably!",
 			ExitCode: 0, Error: nil,
 		}
 	}
@@ -455,20 +459,99 @@ import (
 )
 
 func init() {
-	fmt.Println("🚀 gosh config loaded! Manual wrapper system enabled!")
+	fmt.Println("🚀 gosh config loaded! Command execution system enabled!")
 }
 
 // ==============================================================================
-// MANUAL WRAPPER FUNCTIONS
+// WORKING SHELLAPI FUNCTIONS (v0.2.2+)
 // ==============================================================================
-// These are convenient wrapper functions that call shellapi functions.
-// The manual wrapper pattern processes command substitutions automatically.
+// These functions execute real commands via Go's os/exec and return results.
 
-// Simple utility functions
+// Development helper functions that actually work
+func build() string {
+	result, err := shellapi.GoBuild()
+	if err != nil {
+		return "BUILD ERROR: " + err.Error()
+	}
+	return "BUILD SUCCESS: " + result  // Executes real go build command
+}
+
+func test() string {
+	result, _ := shellapi.GoTest()
+	return result  // Executes real go test with full output
+}
+
+func run() string {
+	result, _ := shellapi.GoRun()
+	return result  // Executes real go run . application
+}
+
+func gs() string {
+	result, err := shellapi.GitStatus()
+	if err != nil {
+		return "GIT ERROR: " + err.Error()
+	}
+	return "GIT STATUS:\n" + result  // Executes real git status with colors
+}
+
+// ==============================================================================
+// DIRECTORY NAVIGATION FUNCTIONS
+// ==============================================================================
+// These functions change directories and persist the change across shell sessions.
+
+// goGosh() navigates to the gosh development directory
+//
+// IMPORTANT: This function MUST return the shellapi.RunShell result as-is for CD to work!
+// The shellapi.RunShell("cd", path) returns a special marker: @GOSH_INTERNAL_CD:/path
+// When this marker is returned, the gosh evaluator detects it and actually changes the shell's
+// working directory. If you try to format or modify the result, the CD functionality breaks!
+//
+// ✅ DO:     return result  // Return CD marker unmodified for directory change
+// ❌ DON'T:  return "Changed to " + result  // This breaks the CD marker system
+// ❌ DON'T:  return fmt.Sprintf("CD: %s", result)  // This breaks the CD marker system
+//
+// After calling goGosh(), the directory change persists for the entire shell session.
+// This enables creating navigation functions like goHome(), goProjects(), etc.
+func goGosh() string {
+	result, _ := shellapi.RunShell("cd", "/Users/rjs/dev/gosh")
+	return result // 🚨 CRITICAL: Return CD marker unmodified for directory change to work!
+}
+
+// Navigate to home config directory
+func goConfig() string {
+	result, _ := shellapi.RunShell("cd", "/Users/rjs/.config/gosh/")
+	return result  // Navigate to config directory
+}
+
+// Navigate to home directory  
+func goHome() string {
+	result, _ := shellapi.RunShell("cd", "~")
+	return result  // Navigate to home directory
+}
+
+// ==============================================================================
+// UTILITY FUNCTIONS
+// ==============================================================================
+
+// Simple welcome function
 func hello() string {
 	return "Hello from gosh!"
 }
 
+// Success message with green color
+func ok(msg string) string {
+	return shellapi.Success(msg)  // Green colored text
+}
+
+// Warning message with yellow color  
+func warn(msg string) string {
+	return shellapi.Warning(msg)  // Yellow colored text
+}
+
+// Error message with red color
+func err(msg string) string {
+	return shellapi.Error(msg)  // Red colored text
+}
 `
 		if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
 			return ExecutionResult{
