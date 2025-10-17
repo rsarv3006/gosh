@@ -236,81 +236,126 @@ Found 12 files
 - Go superpowers when you need them
 - No custom environment syntax to learn
 
-### Shellapi Enhancement - Manual Wrapper Functions
+### Shellapi Functions - Working Command Execution
 
-For users wanting advanced shell functionality, gosh supports importing the shellapi library with custom manual wrapper functions:
+**🎉 NEW: Working shellapi functions that actually execute commands!**
+
+gosh now supports shellapi functions that execute real commands (not just command substitution). These functions use Go's `os/exec` internally and work with full error handling.
 
 ```go
 // ~/.config/gosh/config.go
 package main
 
-import "github.com/rsarv3006/gosh_lib/shellapi"  // Import shellapi functions
+import (
+    "fmt"
+    "github.com/rsarv3006/gosh_lib/shellapi"  // Import shellapi functions
+)
 
 func init() {
-    os.Setenv("PATH", "/opt/homebrew/bin:" + os.Getenv("PATH"))
-    fmt.Println("🚀 Manual wrapper system enabled!")
+    fmt.Println("🚀 gosh config loaded! Command execution system enabled!")
 }
 
-// Manual wrapper functions for convenient REPL access
-func gs() string {
-    result, _ := shellapi.GitStatus()
-    return result  // Command substitution processed automatically
-}
-
-func ok(msg string) string {
-    return shellapi.Success(msg)
-}
-
-func warn(msg string) string {
-    return shellapi.Warning(msg)
-}
-
-func err(msg string) string {
-    return shellapi.Error(msg)
-}
-
+// Development helper functions that actually work
 func build() string {
-    result, _ := shellapi.GoBuild()
-    return result
-}
-func devSetup() string {
-    msg := shellapi.Success("Setting up development environment") + "\n"
-    
-    // Install dependencies
-    goResult, _ := shellapi.GoTidy()
-    msg += goResult + "\n"
-    
-    // Show git status  
-    gitResult, _ := shellapi.GitStatus()
-    msg += gitResult + "\n"
-    
-    return msg
-}
-
-func quickCommit() string {
-    return shellapi.Warning("No changes staged") + "\n"
-}
-
-func buildAndTest() string {
-    buildResult, _ := shellapi.GoBuild()
-    if buildResult == "" {  // Successful build returns empty when processed
-        return shellapi.Success("Build completed") + "\n"
+    result, err := shellapi.GoBuild()
+    if err != nil {
+        return "BUILD ERROR: " + err.Error()
     }
-    return shellapi.Error("Build failed") + "\n"
+    return "BUILD SUCCESS: " + result
+}
+
+func test() string {
+    result, _ := shellapi.GoTest()
+    return result  // Returns actual test output
+}
+
+func run() string {
+    result, _ := shellapi.GoRun()
+    return result  // Returns actual program output
+}
+
+func gs() string {
+    result, err := shellapi.GitStatus()
+    if err != nil {
+        return "GIT ERROR: " + err.Error()
+    }
+    return "GIT STATUS:\n" + result
+}
+
+// Directory changing functions that actually change directories!
+func goGosh() string {
+    result, err := shellapi.RunShell("cd", "/Users/rjs/dev/gosh")
+    if err != nil {
+        return "CD ERROR: " + err.Error()
+    }
+    return result  // Returns CD marker for processing
+}
+
+func goConfig() string {
+    result, err := shellapi.RunShell("cd", "/Users/rjs/.config/gosh/")
+    if err != nil {
+        return "CD ERROR: " + err.Error()
+    }
+    return result  // Returns CD marker for processing
 }
 ```
 
 **Usage Examples:**
 
 ```bash
-gosh> gs()           # Manual wrapper - shows git status with colors
-gosh> ok("Success!") # Manual wrapper - green colored text
-gosh> build()        # Manual wrapper - builds your Go project
-gosh> ls()           # Manual wrapper - colorful file listing
+# These actually execute real commands now!
+gosh> build()           # Executes real go build command
+gosh> test()            # Executes real go test command  
+gosh> run()             # Executes real go run . command
+gosh> gs()              # Executes real git status with full output
 
-# Direct shellapi access (for advanced users):
-gosh> shellapi.GoTest()  # Returns "$(go test ./...)" string
-gosh> shellapi.DockerPs() # Returns "$(docker ps)" string
+# These actually change directories!
+gosh> goGosh()          # Changes to ~/dev/gosh - directory persists!
+gosh> goConfig()        # Changes to ~/.config/gosh/ - directory persists!
+
+# Direct shellapi access also works
+gosh> shellapi.GoBuild()
+gosh> shellapi.GitStatus()
+gosh> shellapi.RunShell("ls", "-la")
+```
+
+**Key Benefits:**
+
+- ✅ **Real Command Execution**: Functions execute actual commands, not just command substitution strings
+- ✅ **Proper Error Handling**: Full error reporting with actual command errors
+- ✅ **Directory Persistence**: CD commands actually change directories in the shell session
+- ✅ **Full Output**: Commands return their actual output, success/failure status
+- ✅ **Working with All Commands**: Works with `git`, `go`, Docker, npm, etc.
+
+**Available Working Functions:**
+
+- **Development Tools**: `GoBuild()`, `GoTest()`, `GoRun()` - execute real Go commands
+- **Git Operations**: `GitStatus()` - shows actual git status  
+- **Shell Commands**: `RunShell(cmd, args...)` - execute any shell command
+- **Directory Changes**: `RunShell("cd", path)` - actually changes directories
+- **Color Functions**: `Success()`, `Warning()`, `Error()` - format text with colors
+- **File Operations**: `LsColor()` - colorful file listings
+
+**How Directory Changes Work:**
+
+The `RunShell("cd", path)` function returns a special CD marker (`@GOSH_INTERNAL_CD:/path`) that the evaluator detects and processes to actually change the shell's working directory.
+
+```go
+func goProject() string {
+    result, err := shellapi.RunShell("cd", "/path/to/project")
+    if err != nil {
+        return "ERROR: " + err.Error()
+    }
+    return result  // Silent success - directory actually changes!
+}
+```
+
+**Requirements for CD Functions:**
+
+- Function must return a `string`
+- Must return the result from `shellapi.RunShell("cd", path)`
+- Successful CD returns no output (silent success)
+- Errors are properly reported
 ```
 
 ## For Technical Details
