@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 )
 
 func main() {
@@ -63,7 +62,17 @@ func main() {
 	evaluator.SetupWithShell(state, spawner)
 	evaluator.SetupWithBuiltins(builtins)
 
-	fmt.Println(colors.StyleMessage("gosh "+GetVersion()+" - Go shell with yaegi", "welcome") + " (BUILT: " + time.Now().Format("2006-01-02 15:04:05") + ")")
+	// Get actual build time from binary modification time
+	if exePath, err := os.Executable(); err == nil {
+		if info, err := os.Stat(exePath); err == nil {
+			buildTime := info.ModTime().Format("2006-01-02 15:04:05")
+			fmt.Println(colors.StyleMessage("gosh "+GetVersion()+" - Go shell with yaegi", "welcome") + " (BUILT: " + buildTime + ")")
+		} else {
+			fmt.Println(colors.StyleMessage("gosh "+GetVersion()+" - Go shell with yaegi", "welcome") + " (BUILT: Unknown)")
+		}
+	} else {
+		fmt.Println(colors.StyleMessage("gosh "+GetVersion()+" - Go shell with yaegi", "welcome") + " (BUILT: Unknown)")
+	}
 	fmt.Println(colors.StyleMessage("Type 'exit' to quit, try some Go code or shell commands!", "welcome"))
 	fmt.Println()
 
