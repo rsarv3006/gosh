@@ -118,7 +118,8 @@ func (b *BuiltinHandler) help(args []string) ExecutionResult {
 				"COMMANDS:\n" +
 				"  cd [DIR]          Change directory to DIR (or home if no DIR)\n" +
 				"  exit [CODE]        Exit shell with optional exit code\n" +
-				"  help [COMMAND]    Show help for COMMAND, or this general help\n\n" +
+				"  help [COMMAND]    Show help for COMMAND, or this general help\n" +
+				"  init               Initialize ~/.config/gosh with shellapi config\n\n" +
 				"CONFIGURATION:\n" +
 				"  config.go          Go configuration file executed on startup\n" +
 				"    - Checked in current directory first\n" +
@@ -137,6 +138,16 @@ func (b *BuiltinHandler) help(args []string) ExecutionResult {
 				"  $(command) captures command output into a Go string:\n" +
 				"    files := $(ls)\n" +
 				"    result := $(curl -s https://example.com)\n\n" +
+				"SHELLAPI (v0.2.1+):\n" +
+				"  Advanced shell functions via manual wrapper system:\n" +
+				"    gs()              # Git status with colors\n" +
+				"    ok('message')     # Green success message\n" +
+				"    warn('message')   # Yellow warning message\n" +
+				"    err('message')    # Red error message\n" +
+				"    build()           # Go build project\n" +
+				"    shellapi.GitStatus()  # Direct access also works\n" +
+				"    shellapi.Success('text') # Direct access with colors\n" +
+				"  Try 'help shellapi' for more information\n\n" +
 				"ROUTING:\n" +
 				"  - Built-in commands are executed first\n" +
 				"  - Go syntax (assignments, functions, loops) is evaluated with yaegi\n" +
@@ -192,7 +203,82 @@ func (b *BuiltinHandler) help(args []string) ExecutionResult {
 				"EXAMPLES:\n" +
 				"    help          # Show this general help\n" +
 				"    help cd       # Show help for cd command\n" +
+				"    help init     # Show help for init command\n" +
+				"    help shellapi # Show help for shellapi functions\n" +
 				"    help go       # Show help for Go code execution",
+			ExitCode: 0, Error: nil,
+		}
+	}
+
+	// Check for init help
+	if command == "init" {
+		return ExecutionResult{
+			Output: "init - Initialize gosh Configuration\n\n" +
+				"USAGE:\n" +
+				"    init\n\n" +
+				"DESCRIPTION:\n" +
+				"    Initialize ~/.config/gosh directory with shellapi configuration.\n" +
+				"    Creates go.mod file and template config.go with manual wrapper examples.\n\n" +
+				"CREATES:\n" +
+				"    ~/.config/gosh/                      - Configuration directory\n" +
+				"    ~/.config/gosh/go.mod                 - Go module file\n" +
+				"    ~/.config/gosh/config.go              - Template config with examples\n\n" +
+				"TEMPLATE INCLUDES:\n" +
+				"    • shellapi import for advanced functions\n" +
+				"    • Manual wrapper examples (gs, ok, warn, err, build)\n" +
+				"    • Functions for git status, colored output, project building\n" +
+				"    • Command substitution processing\n\n" +
+				"AFTER INIT:\n" +
+				"    1. Restart gosh to load the new configuration\n" +
+				"    2. Try: gs()           # Git status with colors\n" +
+				"    3. Try: ok('Success!') # Green success message\n" +
+				"    4. Optionally: cd ~/.config/gosh && go mod tidy\n\n" +
+				"NOTE:\n" +
+				"    The config provides shellapi functions via manual wrapper pattern.\n" +
+				"    This gives you convenient REPL access to 100+ shell functions.",
+			ExitCode: 0, Error: nil,
+		}
+	}
+
+	// Check for shellapi help
+	if command == "shellapi" {
+		return ExecutionResult{
+			Output: "shellapi - Shell Function Library (v0.2.1+)\n\n" +
+				"OVERVIEW:\n" +
+				"    shellapi provides 100+ shell-friendly functions organized\n" +
+				"    into categories: development tools, file operations, git,\n" +
+				"    system commands, colors, and project utilities.\n\n" +
+				"MANUAL WRAPPER PATTERN:\n" +
+				"    Instead of direct access, create manual wrapper functions:\n\n" +
+				"EXAMPLE WRAPPER CONFIG:\n" +
+				"    import \"github.com/rsarv3006/gosh_lib/shellapi\"\n\n" +
+				"    func gs() string {\n" +
+				"        result, _ := shellapi.GitStatus()\n" +
+				"        return result  // Command substitution processed\n" +
+				"    }\n\n" +
+				"    func ok(msg string) string {\n" +
+				"        return shellapi.Success(msg)\n" +
+				"    }\n\n" +
+				"DUAL ACCESS:\n" +
+				"    • Manual wrappers: gs(), ok(), build(), warn(), err()\n" +
+				"    • Direct access: shellapi.GitStatus(), shellapi.Success()\n" +
+				"    • Both patterns process command substitutions automatically\n\n" +
+				"AVAILABLE CATEGORIES:\n" +
+				"    🔧 Development: GoBuild(), GoTest(), NpmInstall(), DockerPs()\n" +
+				"    📁 File Ops:    Ls(), Cat(), Find(), Grep(), Touch()\n" +
+				"    🔀 Git:         GitStatus(), GitLog(), QuickCommit(), GitPull()\n" +
+				"    🖥️  System:      Uptime(), Date(), Pwd(), EnvVar()\n" +
+				"    🎨 Colors:      Success(), Error(), Warning(), Bold()\n" +
+				"    🏗️  Project:     MakeTarget(), BuildAndTest(), CreateProjectDir()\n\n" +
+				"COLOR EXAMPLES:\n" +
+				"    shellapi.Success(\"Build passed!\")   # Green text\n" +
+				"    shellapi.Warning(\"Caution\")        # Yellow text\n" +
+				"    shellapi.Error(\"Failed!\")          # Red text\n\n" +
+				"SETUP:\n" +
+				"    1. Run 'init' to create config with examples\n" +
+				"    2. Or manually create ~/.config/gosh/config.go\n" +
+				"    3. Import shellapi and define your wrappers\n\n" +
+				"For more information: https://github.com/rsarv3006/gosh_lib",
 			ExitCode: 0, Error: nil,
 		}
 	}

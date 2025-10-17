@@ -8,10 +8,7 @@ import (
 	"strings"
 )
 
-
-
 func main() {
-	// Check for command line flags
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "-v", "--version":
@@ -38,9 +35,9 @@ func main() {
 			state := NewShellState()
 			evaluator := NewGoEvaluator()
 			spawner := NewProcessSpawner(state)
-			
+
 			evaluator.SetupWithShell(state, spawner)
-			
+
 			// Use evaluator to execute the command
 			result := evaluator.Eval(command)
 			fmt.Print(result.Output)
