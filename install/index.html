@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Installation - My Docs</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">My Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href=".." class="nav-link">gosh - Go Shell</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../config/" class="nav-link">Configuration Examples</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../getting-started/" class="nav-link">Getting Started</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../guide/" class="nav-link">User Guide</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="./" class="nav-link active" aria-current="page">Installation</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../reference/" class="nav-link">CLI Reference</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../guide/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../reference/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#installation" class="nav-link">Installation</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#homebrew-recommended" class="nav-link">Homebrew (Recommended)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#go-install" class="nav-link">Go Install</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#build-from-source" class="nav-link">Build from Source</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#system-requirements" class="nav-link">System Requirements</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#verify-installation" class="nav-link">Verify Installation</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#path-configuration" class="nav-link">PATH Configuration</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#usage-modes" class="nav-link">Usage Modes</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#post-installation-setup" class="nav-link">Post-Installation Setup</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#troubleshooting" class="nav-link">Troubleshooting</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#upgrade-instructions" class="nav-link">Upgrade Instructions</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#whats-next" class="nav-link">What's Next?</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="installation">Installation</h1>
+<p>Get gosh running on your system with these simple installation methods.</p>
+<h2 id="homebrew-recommended">Homebrew (Recommended)</h2>
+<p>The easiest way to install gosh is via Homebrew:</p>
+<pre><code class="language-bash"># Install via homebrew tap
+brew install rsarv3006/gosh/gosh
+
+# Add to system shells (optional, to use as login shell)
+echo '/opt/homebrew/bin/gosh' | sudo tee -a /etc/shells
+
+# Set as default shell (optional)
+chsh -s /opt/homebrew/bin/gosh
+
+# Run
+gosh
+</code></pre>
+<h2 id="go-install">Go Install</h2>
+<p>If you have Go installed, you can directly install the latest release:</p>
+<pre><code class="language-bash"># Install the latest release
+go install github.com/rsarv3006/gosh@latest
+
+# Make sure your Go bin directory is in your PATH
+export PATH=$PATH:$(go env GOPATH)/bin
+
+# Run
+gosh
+</code></pre>
+<h2 id="build-from-source">Build from Source</h2>
+<p>For developers or those who want the latest development version:</p>
+<pre><code class="language-bash"># Clone the repository
+git clone https://github.com/rsarv3006/gosh
+cd gosh
+
+# Build
+go build
+
+# Run
+./gosh
+
+# Or install for system-wide use
+go install .
+</code></pre>
+<h2 id="system-requirements">System Requirements</h2>
+<ul>
+<li><strong>Operating System</strong>: macOS, Linux (Windows users can use PowerShell as an alternative)</li>
+<li><strong>Go</strong>: Version 1.21 or higher (for building from source)</li>
+<li><strong>Architecture</strong>: amd64, arm64</li>
+</ul>
+<h2 id="verify-installation">Verify Installation</h2>
+<p>Once installed, verify gosh is working:</p>
+<pre><code class="language-bash"># Check version
+gosh --version
+
+# Or inside gosh
+gosh&gt; fmt.Println(&quot;main&quot;.GetVersion())
+0.2.3
+
+# Help command
+gosh --help
+</code></pre>
+<h2 id="path-configuration">PATH Configuration</h2>
+<p>Make sure gosh is in your PATH:</p>
+<h3 id="for-go-install-users">For Go Install Users</h3>
+<pre><code class="language-bash"># Add this to your ~/.zshrc or ~/.bashrc
+export PATH=$PATH:$(go env GOPATH)/bin
+
+# Reload your shell
+source ~/.zshrc  # or ~/.bashrc
+</code></pre>
+<h3 id="for-homebrew-users">For Homebrew Users</h3>
+<p>Homebrew automatically configures the PATH, but you may need to start a new terminal session.</p>
+<h2 id="usage-modes">Usage Modes</h2>
+<h3 id="interactive-shell">Interactive Shell</h3>
+<p>The most common usage - start an interactive session:</p>
+<pre><code class="language-bash">gosh
+</code></pre>
+<h3 id="single-command-execution">Single Command Execution</h3>
+<p>Execute a single command and exit:</p>
+<pre><code class="language-bash">gosh -c 'fmt.Println(&quot;Hello from gosh&quot;)'
+
+# Or with shell commands
+gosh -c 'ls -la'
+
+# With Go code
+gosh -c 'files := $(ls); fmt.Printf(&quot;Found %d files\n&quot;, len(strings.Split(files, &quot;\n&quot;)))'
+</code></pre>
+<h3 id="as-login-shell">As Login Shell</h3>
+<p>Make gosh your default shell:</p>
+<pre><code class="language-bash"># Add to available shells
+echo $(which gosh) | sudo tee -a /etc/shells
+
+# Set as default shell
+chsh -s $(which gosh)
+</code></pre>
+<h2 id="post-installation-setup">Post-Installation Setup</h2>
+<h3 id="create-configuration-directory">Create Configuration Directory</h3>
+<p>Set up your gosh configuration:</p>
+<pre><code class="language-bash"># Create config directory
+mkdir -p ~/.config/gosh
+
+# Initialize with example config
+gosh
+gosh&gt; init
+</code></pre>
+<p>This creates an example <code>~/.config/gosh/config.go</code> file with useful functions.</p>
+<h3 id="verify-functions">Verify Functions</h3>
+<p>Test some built-in functions:</p>
+<pre><code class="language-bash">gosh&gt; gs  # Git status helper
+gosh&gt; build()  # Build helper
+gosh&gt; test()  # Test helper
+</code></pre>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="common-issues">Common Issues</h3>
+<p><strong>Command not found: gosh</strong></p>
+<pre><code class="language-bash"># Check if gosh is in PATH
+which gosh
+
+# If not found, add Go bin directory to PATH
+export PATH=$PATH:$(go env GOPATH)/bin
+</code></pre>
+<p><strong>Permission denied</strong></p>
+<pre><code class="language-bash"># Make sure gosh is executable
+chmod +x $(which gosh)
+</code></pre>
+<p><strong>Config loading errors</strong></p>
+<pre><code class="language-bash"># Check config directory permissions
+ls -la ~/.config/gosh/
+
+# If needed, fix permissions
+chmod 755 ~/.config/gosh
+</code></pre>
+<p><strong>Go not installed</strong></p>
+<pre><code class="language-bash"># Install Go on macOS
+brew install go
+
+# Or download from https://go.dev/
+</code></pre>
+<h3 id="getting-help">Getting Help</h3>
+<p>If you encounter issues:</p>
+<ol>
+<li>Check this troubleshooting section</li>
+<li>Review the <a href="../guide/">User Guide</a> for configuration help</li>
+<li>Open an issue on <a href="https://github.com/rsarv3006/gosh/issues">GitHub</a></li>
+</ol>
+<h2 id="upgrade-instructions">Upgrade Instructions</h2>
+<h3 id="homebrew-users">Homebrew Users</h3>
+<pre><code class="language-bash">brew upgrade rsarv3006/gosh/gosh
+</code></pre>
+<h3 id="go-install-users">Go Install Users</h3>
+<pre><code class="language-bash">go install github.com/rsarv3006/gosh@latest
+</code></pre>
+<h3 id="source-users">Source Users</h3>
+<pre><code class="language-bash">cd gosh
+git pull origin main
+go build
+</code></pre>
+<h2 id="whats-next">What's Next?</h2>
+<p>Once gosh is installed and working:</p>
+<ul>
+<li><a href="../getting-started/">Getting Started Guide</a> - Learn basic usage</li>
+<li><a href="../config/">Configuration Examples</a> - Set up custom functions</li>
+<li><a href="../guide/">User Guide</a> - Advanced features</li>
+<li><a href="../reference/">CLI Reference</a> - Complete command documentation</li>
+</ul>
+<hr />
+<p>Enjoy your enhanced shell experience! 🚀</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

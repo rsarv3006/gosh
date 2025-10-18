@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="description" content="None">
+        
+        
+        <link rel="shortcut icon" href="img/favicon.ico">
+        <title>My Docs</title>
+        <link href="css/bootstrap.min.css" rel="stylesheet">
+        <link href="css/fontawesome.min.css" rel="stylesheet">
+        <link href="css/brands.min.css" rel="stylesheet">
+        <link href="css/solid.min.css" rel="stylesheet">
+        <link href="css/v4-font-face.min.css" rel="stylesheet">
+        <link href="css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body class="homepage">
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href=".">My Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href="." class="nav-link active" aria-current="page">gosh - Go Shell</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="config/" class="nav-link">Configuration Examples</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="getting-started/" class="nav-link">Getting Started</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="guide/" class="nav-link">User Guide</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="install/" class="nav-link">Installation</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="reference/" class="nav-link">CLI Reference</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" class="nav-link disabled">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="config/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#gosh-go-shell" class="nav-link">gosh - Go Shell</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#overview" class="nav-link">Overview</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#key-features" class="nav-link">Key Features</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#quick-example" class="nav-link">Quick Example</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#status" class="nav-link">Status</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#get-started" class="nav-link">Get Started</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="gosh-go-shell">gosh - Go Shell</h1>
+<blockquote>
+<p>A hybrid shell that combines Go's interpreter (via yaegi) with traditional command execution.</p>
+</blockquote>
+<h2 id="overview">Overview</h2>
+<p><strong>gosh</strong> is a hybrid shell that combines Go's interpreter (via yaegi) with traditional command execution. Cross-platform capable, designed as a daily driver, with instant startup and no PTY complexity.</p>
+<h3 id="core-philosophy">Core Philosophy</h3>
+<ul>
+<li><strong>Go-first</strong>: The shell is fundamentally a Go interpreter with shell conveniences</li>
+<li><strong>No shell syntax parsing</strong>: We're not reimplementing bash. Bare commands work, everything else is Go</li>
+<li><strong>Hybrid approach</strong>: <code>ls</code> just works, but <code>files := $(ls)</code> is also valid</li>
+<li><strong>Instant startup</strong>: No waiting for REPLs to initialize</li>
+<li><strong>Daily driver quality</strong>: Stable, fast, and pleasant to use</li>
+</ul>
+<h2 id="key-features">Key Features</h2>
+<ul>
+<li><strong>Instant startup</strong>: No waiting for REPLs to initialize (looking at you, Swift)</li>
+<li><strong>Multiline Go code</strong>: Write functions, if statements, for loops with proper continuation prompts</li>
+<li><strong>Command substitution</strong>: <code>$(command)</code> syntax captures command output into Go strings</li>
+<li><strong>Go REPL</strong>: Write Go code directly in your shell with persistent state</li>
+<li><strong>Traditional commands</strong>: Just works - <code>ls</code>, <code>git status</code>, etc.</li>
+<li><strong>Hybrid mode</strong>: Mix Go code and shell commands seamlessly</li>
+<li><strong>Built-ins</strong>: <code>cd</code>, <code>exit</code>, <code>pwd</code>, <code>help</code>, <code>init</code> with path expansion</li>
+<li><strong>Signal handling</strong>: Proper Ctrl+C behavior for interrupting processes</li>
+<li><strong>Cross-platform</strong>: macOS &amp; Linux support (Windows users can use PowerShell)</li>
+<li><strong>Configuration support</strong>: Custom Go functions in <code>~/.config/gosh/config.go</code></li>
+</ul>
+<h2 id="quick-example">Quick Example</h2>
+<pre><code class="language-bash"># Regular shell commands work
+gosh&gt; ls -la
+gosh&gt; git status
+gosh&gt; cd ~/projects
+
+# Go code just works
+gosh&gt; x := 42
+gosh&gt; fmt.Println(x * 2)
+84
+
+gosh&gt; func add(a, b int) int {
+...     return a + b
+... }
+gosh&gt; fmt.Println(add(5, 3))
+8
+
+# Command substitution - game changing feature!
+gosh&gt; files := $(ls)
+gosh&gt; fmt.Println(strings.Split(files, &quot;\n&quot;)[0])
+README.md
+
+# Mix and match
+gosh&gt; pwd
+/Users/you/gosh
+gosh&gt; name := &quot;gosh&quot;
+gosh&gt; fmt.Printf(&quot;Welcome to %s\n&quot;, name)
+Welcome to gosh
+</code></pre>
+<h2 id="status">Status</h2>
+<p><strong>✅ MVP Complete</strong>:</p>
+<ul>
+<li>✅ Basic REPL loop with readline</li>
+<li>✅ Multiline Go code support (essential for Go!)</li>
+<li>✅ Go evaluation with yaegi and state persistence</li>
+<li>✅ Command execution with proper signal handling</li>
+<li>✅ Built-ins (cd, exit, pwd, help, init)</li>
+<li>✅ Command substitution <code>$(command)</code> syntax</li>
+<li>✅ Hybrid environment strategy (standard shell + Go extensions)</li>
+<li>✅ Smart routing between Go code and shell commands</li>
+<li>✅ Proper Ctrl+C interrupt handling</li>
+</ul>
+<p><strong>🎯 Phase 2 Complete</strong>:</p>
+<ul>
+<li>✅ Hybrid environment system (standard shell configs + Go extensions)</li>
+<li>✅ Config file support (config.go)</li>
+<li>✅ Tab completion for commands and file paths</li>
+<li>✅ Color system with theme support</li>
+<li>✅ Comprehensive test coverage</li>
+<li>✅ Enhanced help system</li>
+</ul>
+<p><strong>🚀 Phase 3 Complete</strong>:</p>
+<ul>
+<li>✅ Command history navigation (up/down arrows)</li>
+<li>✅ Better error messages with line numbers</li>
+<li>✅ Git integration in prompt</li>
+</ul>
+<p><strong>🔧 Phase 4 Complete - Working Shellapi Functions</strong>:</p>
+<p>✅ <strong>Real Command Execution (v0.2.2)</strong>
+gosh v0.2.2 features shellapi functions that execute real commands via Go's <code>os/exec</code>, providing actual command output and persistent directory changes.</p>
+<h2 id="get-started">Get Started</h2>
+<p>Ready to dive in? Check out our <a href="install/">Installation Guide</a> to get gosh running on your system, then head to the <a href="getting-started/">Getting Started</a> guide to learn the basics.</p>
+<p>For advanced usage and configuration, see the <a href="guide/">User Guide</a> and <a href="reference/">CLI Reference</a>.</p>
+<hr />
+<p><strong>Note</strong>: gosh was built with passion for creating a better shell experience that combines the power of Go with the familiarity of traditional shell commands. Welcome to the future of shells! 🚀</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = ".",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="js/base.js"></script>
+        <script src="search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
+
+<!--
+MkDocs version : 1.6.1
+Build Date UTC : 2025-10-18 01:02:20.946033+00:00
+-->

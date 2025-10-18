@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>User Guide - My Docs</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">My Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href=".." class="nav-link">gosh - Go Shell</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../config/" class="nav-link">Configuration Examples</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../getting-started/" class="nav-link">Getting Started</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="./" class="nav-link active" aria-current="page">User Guide</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../install/" class="nav-link">Installation</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../reference/" class="nav-link">CLI Reference</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../getting-started/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../install/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#user-guide" class="nav-link">User Guide</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#configuration-strategy" class="nav-link">Configuration Strategy</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#working-with-shellapi-functions" class="nav-link">Working with Shellapi Functions</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#advanced-command-usage" class="nav-link">Advanced Command Usage</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#project-specific-workflow" class="nav-link">Project-Specific Workflow</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#productivity-tips" class="nav-link">Productivity Tips</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#color-and-formatting-functions" class="nav-link">Color and Formatting Functions</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#advanced-patterns" class="nav-link">Advanced Patterns</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#best-practices" class="nav-link">Best Practices</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="user-guide">User Guide</h1>
+<p>Master the advanced features of gosh with this comprehensive user guide covering configuration, shellapi functions, and productivity workflows.</p>
+<h2 id="configuration-strategy">Configuration Strategy</h2>
+<p>gosh uses a <strong>dual-layer configuration approach</strong> that gives you the best of both worlds: standard shell compatibility plus Go-powered extensions.</p>
+<h3 id="layer-1-standard-shell-environment-envgo">Layer 1: Standard Shell Environment (<code>env.go</code>)</h3>
+<p><strong>Automatic Standard Config Loading:</strong></p>
+<p>gosh loads regular shell configs when run as login shell, supporting:
+- <code>.bash_profile</code>, <code>.zprofile</code>, <code>.profile</code>, <code>.bash_login</code>, <code>.login</code>
+- Full POSIX environment inheritance
+- Shell variable expansion <code>$HOME</code>, <code>$PATH</code>, <code>$GOPATH</code></p>
+<p><strong>Example .bash_profile</strong></p>
+<pre><code class="language-bash"># Your existing shell configs just work!
+export PATH=&quot;/opt/homebrew/bin:$PATH&quot;
+export GOPATH=&quot;$HOME/go&quot;
+export EDITOR=&quot;vim&quot;
+export JAVA_HOME=&quot;/usr/local/opt/openjdk&quot;
+</code></pre>
+<h3 id="layer-2-go-powered-extensions-configgo">Layer 2: Go-Powered Extensions (<code>config.go</code>)</h3>
+<p>Create a Go file for your global shell customization at:</p>
+<p><code>~/.config/gosh/config.go</code></p>
+<p>This single global config loads every time gosh starts, providing consistent shell behavior across all projects.</p>
+<pre><code class="language-go">// ~/.config/gosh/config.go
+package main
+
+import (
+    &quot;fmt&quot;
+    &quot;os&quot;
+)
+
+func init() {
+    // Global environment setup
+    os.Setenv(&quot;GOPATH&quot;, os.Getenv(&quot;HOME&quot;) + &quot;/go&quot;)
+    os.Setenv(&quot;EDITOR&quot;, &quot;vim&quot;)
+    fmt.Println(&quot;gosh global config loaded!&quot;)
+}
+
+// Global functions available in any gosh session
+func info() {
+    fmt.Printf(&quot;gosh %s - GOPATH: %s, EDITOR: %s\n&quot;,
+        &quot;main&quot;.GetVersion(), os.Getenv(&quot;GOPATH&quot;), os.Getenv(&quot;EDITOR&quot;))
+}
+
+func clean(a string) string {
+    return strings.TrimSpace(a)
+}
+</code></pre>
+<h2 id="working-with-shellapi-functions">Working with Shellapi Functions</h2>
+<p>gosh v0.2.2 features <strong>working shellapi functions</strong> that execute real commands via Go's <code>os/exec</code>, providing actual command output and persistent directory changes.</p>
+<h3 id="development-workflow-functions">Development Workflow Functions</h3>
+<pre><code class="language-go">// ~/.config/gosh/config.go
+package main
+
+import (
+    &quot;fmt&quot;
+    &quot;github.com/rsarv3006/gosh_lib/shellapi&quot;
+)
+
+func init() {
+    fmt.Println(&quot;🚀 gosh config loaded! Command execution system enabled!&quot;)
+}
+
+// Functions that actually execute real commands
+func build() string {
+    result, err := shellapi.GoBuild()
+    if err != nil {
+        return &quot;BUILD ERROR: &quot; + err.Error()
+    }
+    return &quot;BUILD SUCCESS: &quot; + result
+}
+
+func test() string {
+    result, _ := shellapi.GoTest()
+    return result
+}
+
+func run() string {
+    result, _ := shellapi.GoRun()
+    return result
+}
+
+func gs() string {
+    result, err := shellapi.GitStatus()
+    if err != nil {
+        return &quot;GIT ERROR: &quot; + err.Error()
+    }
+    return &quot;GIT STATUS:\n&quot; + result
+}
+</code></pre>
+<h3 id="directory-navigation-functions">Directory Navigation Functions</h3>
+<p>Directory changes actually persist in the shell session:</p>
+<pre><code class="language-go">// Directory changing functions that actually change directories!
+func goGosh() string {
+    result, err := shellapi.RunShell(&quot;cd&quot;, &quot;/Users/rjs/dev/gosh&quot;)
+    if err != nil {
+        return &quot;CD ERROR: &quot; + err.Error()
+    }
+    return result  // Returns CD marker for processing
+}
+
+func goConfig() string {
+    result, err := shellapi.RunShell(&quot;cd&quot;, &quot;/Users/rjs/.config/gosh/&quot;)
+    if err != nil {
+        return &quot;CD ERROR: &quot; + err.Error()
+    }
+    return result
+}
+
+func goProjects() string {
+    result, err := shellapi.RunShell(&quot;cd&quot;, &quot;~/projects&quot;)
+    if err != nil {
+        return &quot;ERROR: &quot; + err.Error()
+    }
+    return result
+}
+</code></pre>
+<h3 id="usage-examples">Usage Examples</h3>
+<pre><code class="language-bash"># These actually execute real commands!
+gosh&gt; build()    # Executes real go build command
+gosh&gt; test()     # Executes real go test command  
+gosh&gt; run()      # Executes real go run . command
+gosh&gt; gs()       # Executes real git status with full output
+
+# These actually change directories!
+gosh&gt; goGosh()   # Changes to ~/dev/gosh - directory persists!
+gosh&gt; goConfig() # Changes to ~/.config/gosh/ - directory persists!
+gosh&gt; pwd
+/Users/rjs/dev/gosh  # Directory actually changed
+</code></pre>
+<h2 id="advanced-command-usage">Advanced Command Usage</h2>
+<h3 id="runshell-command-engine">RunShell Command Engine</h3>
+<p>The <code>shellapi.RunShell</code> function is the core command execution engine:</p>
+<pre><code class="language-go">// Basic command execution
+result, err := shellapi.RunShell(&quot;command&quot;, &quot;arg1&quot;, &quot;arg2&quot;)
+
+// Development tools
+build := shellapi.RunShell(&quot;go&quot;, &quot;build&quot;)
+tests := shellapi.RunShell(&quot;go&quot;, &quot;test&quot;, &quot;./...&quot;)
+
+// System commands
+uptime := shellapi.RunShell(&quot;uptime&quot;)
+ps := shellapi.RunShell(&quot;ps&quot;, &quot;aux&quot;)
+
+// Directory changes with persistence
+result, err := shellapi.RunShell(&quot;cd&quot;, &quot;/path/to/project&quot;)
+if err != nil {
+    return &quot;CD ERROR: &quot; + err.Error()  
+}
+return result  // Directory actually changes
+</code></pre>
+<h3 id="error-handling-patterns">Error Handling Patterns</h3>
+<pre><code class="language-go">func buildAndTest() string {
+    // Build first
+    build, buildErr := shellapi.GoBuild()
+    if buildErr != nil {
+        return &quot;BUILD FAILED: &quot; + buildErr.Error()
+    }
+
+    // Then test
+    test, testErr := shellapi.GoTest()
+    if testErr != nil {
+        return &quot;TESTS FAILED: &quot; + testErr.Error()
+    }
+
+    return &quot;✅ Build successful\n&quot; + test
+}
+
+func deployTo(prodEnv string) string {
+    msg := &quot;Deploying to &quot; + prodEnv + &quot;...\n&quot;
+
+    // Check git status
+    status, _ := shellapi.GitStatus()
+    if status != &quot;&quot; {
+        msg += &quot;⚠️  Working tree not clean:\n&quot; + status
+        return msg
+    }
+
+    // Deploy
+    result, err := shellapi.RunShell(&quot;ansible-playbook&quot;, &quot;deploy.yml&quot;, &quot;-e&quot;, &quot;env=&quot;+prodEnv)
+    if err != nil {
+        return &quot;DEPLOY ERROR: &quot; + err.Error()
+    }
+
+    return msg + &quot;✅ Deployment complete&quot;
+}
+</code></pre>
+<h2 id="project-specific-workflow">Project-Specific Workflow</h2>
+<h3 id="multi-environment-development">Multi-Environment Development</h3>
+<pre><code class="language-go">// Environment-based project management
+func goEnv(env string) string {
+    var path string
+    switch env {
+    case &quot;dev&quot;:
+        path = &quot;~/projects/myapp-dev&quot;
+    case &quot;staging&quot;:
+        path = &quot;~/projects/myapp-staging&quot;
+    case &quot;prod&quot;:
+        path = &quot;~/projects/myapp-prod&quot;
+    default:
+        return &quot;Unknown environment: &quot; + env
+    }
+
+    result, err := shellapi.RunShell(&quot;cd&quot;, path)
+    if err != nil {
+        return &quot;ERROR: &quot; + err.Error()
+    }
+    return result
+}
+
+// Usage:
+// gosh&gt; goEnv(&quot;dev&quot;)  # Goes to dev environment
+// gosh&gt; goEnv(&quot;prod&quot;) # Goes to prod environment
+</code></pre>
+<h3 id="database-operations">Database Operations</h3>
+<pre><code class="language-go">func dbConnect(env string) string {
+    var dbUrl string
+    switch env {
+    case &quot;dev&quot;:
+        dbUrl = &quot;postgresql://user:pass@localhost/devdb&quot;
+    case &quot;prod&quot;:
+        dbUrl = &quot;postgresql://user:pass@prod-server/proddb&quot;
+    }
+
+    result, err := shellapi.RunShell(&quot;psql&quot;, dbUrl)
+    return &quot;Connected to &quot; + env + &quot; database\n&quot; + result
+}
+
+func dbMigrate(env string) string {
+    msg := &quot;Migrating &quot; + env + &quot; database...\n&quot;
+
+    // Run migrations
+    migrate, err := shellapi.RunShell(&quot;npm&quot;, &quot;run&quot;, &quot;db:migrate&quot;)
+    if err != nil {
+        return &quot;MIGRATION ERROR: &quot; + err.Error()
+    }
+
+    return msg + migrate
+}
+</code></pre>
+<h2 id="productivity-tips">Productivity Tips</h2>
+<h3 id="git-workflow-automation">Git Workflow Automation</h3>
+<pre><code class="language-go">func quickCommit(msg string) string {
+    status, _ := shellapi.GitStatus()
+    if status == &quot;&quot; {
+        return &quot;Nothing to commit&quot;
+    }
+
+    // Add all changes
+    shellapi.GitAdd(&quot;.&quot;)
+
+    // Create commit
+    commit, err := shellapi.GitCommit(msg)
+    if err != nil {
+        return &quot;COMMIT ERROR: &quot; + err.Error()
+    }
+
+    return &quot;✅ Committed: &quot; + msg
+}
+
+func syncBranch() string {
+    msg := &quot;Syncing branch with remote...\n&quot;
+
+    // Pull latest
+    pull, err := shellapi.GitPull()
+    if err != nil {
+        return &quot;PULL ERROR: &quot; + err.Error()
+    }
+
+    // Push local changes
+    push, err := shellapi.GitPush()
+    if err != nil {
+        return &quot;PUSH ERROR: &quot; + err.Error()
+    }
+
+    return msg + &quot;✅ Branch synced&quot;
+}
+</code></pre>
+<h3 id="file-management">File Management</h3>
+<pre><code class="language-go">func projectInfo() string {
+    info := shellapi.Bold(&quot;Project Information:\n&quot;)
+
+    // Git status
+    if gitStatus, err := shellapi.GitStatus(); err == nil {
+        info += shellapi.Bold(&quot;Git: &quot;) + gitStatus + &quot;\n&quot;
+    }
+
+    # File count
+    if files, _ := shellapi.Ls(); files != &quot;&quot; {
+        fileCount := len(strings.Split(strings.TrimSpace(files), &quot;\n&quot;))
+        info += shellapi.Bold(&quot;Files: &quot;) + fmt.Sprintf(&quot;%d files\n&quot;, fileCount)
+    }
+
+    # Directory size
+    if du, _ := shellapi.RunShell(&quot;du&quot;, &quot;-sh&quot;, &quot;.&quot;); du != &quot;&quot; {
+        parts := strings.Split(strings.TrimSpace(du), &quot;\t&quot;)
+        if len(parts) &gt; 0 {
+            info += shellapi.Bold(&quot;Size: &quot;) + parts[0] + &quot;\n&quot;
+        }
+    }
+
+    return info
+}
+
+func cleanProject() string {
+    msg := &quot;Cleaning project...\n&quot;
+
+    # Remove temporary files
+    if _, err := shellapi.RunShell(&quot;find&quot;, &quot;.&quot;, &quot;-name&quot;, &quot;*.tmp&quot;, &quot;-delete&quot;); err == nil {
+        msg += shellapi.Success(&quot;✓ Removed temporary files\n&quot;)
+    }
+
+    # Remove build artifacts
+    if _, err := shellapi.RunShell(&quot;rm&quot;, &quot;-rf&quot;, &quot;dist/&quot;, &quot;build/&quot;); err == nil {
+        msg += shellapi.Success(&quot;✓ Removed build artifacts\n&quot;)
+    }
+
+    return msg
+}
+</code></pre>
+<h2 id="color-and-formatting-functions">Color and Formatting Functions</h2>
+<p>Use the color functions to make your output more readable:</p>
+<pre><code class="language-go">func projectStatus() string {
+    status, _ := shellapi.GitStatus()
+
+    if status == &quot;&quot; {
+        return shellapi.Success(&quot;✓ Working tree is clean&quot;)
+    }
+
+    return shellapi.Warning(&quot;⚠ Working tree has changes:\n&quot;) + 
+           shellapi.Highlight(strings.TrimSpace(status))
+}
+
+func buildReport() string {
+    result, err := shellapi.GoBuild()
+
+    if err != nil {
+        return shellapi.Error(&quot;✗ Build failed:&quot;) + &quot;\n&quot; + err.Error()
+    }
+
+    return shellapi.Success(&quot;✓ Build successful&quot;) + &quot;\n&quot; + result
+}
+
+func infoMessage() string {
+    return shellapi.InfoMsg(&quot;Info&quot;, &quot;This is an informational message&quot;)
+}
+
+func debugMessage() string {
+    return shellapi.DebugMsg(&quot;Debug&quot;, &quot;Detailed diagnostics information&quot;)
+}
+</code></pre>
+<h2 id="advanced-patterns">Advanced Patterns</h2>
+<h3 id="lazy-loading-commands">Lazy Loading Commands</h3>
+<pre><code class="language-go">var (
+    projectCache map[string]string
+    cacheLoaded  bool
+)
+
+func getProjectInfo(project string) string {
+    if !cacheLoaded {
+        loadProjectCache()
+        cacheLoaded = true
+    }
+
+    if info, exists := projectCache[project]; exists {
+        return info
+    }
+
+    return &quot;Project not found: &quot; + project
+}
+
+func loadProjectCache() {
+    projectCache = make(map[string]string)
+    // Load project information lazily
+    // ... implementation
+}
+</code></pre>
+<h3 id="interactive-workflows">Interactive Workflows</h3>
+<pre><code class="language-go">func interactiveDeploy() string {
+    // Check if we're in a git repo
+    if _, err := shellapi.GitStatus(); err != nil {
+        return &quot;Not in a git repository&quot;
+    }
+
+    fmt.Println(shellapi.Question(&quot;Deploy to which environment? (dev/staging/prod)&quot;))
+    // In real implementation, you'd read user input here
+
+    // Example: deploy to staging
+    return deployTo(&quot;staging&quot;)
+}
+</code></pre>
+<h2 id="best-practices">Best Practices</h2>
+<h3 id="performance-tips">Performance Tips</h3>
+<ol>
+<li><strong>Cache expensive operations</strong>: Store results of expensive commands</li>
+<li><strong>Use shellapi functions</strong>: Pre-built functions are optimized</li>
+<li><strong>Validate inputs</strong>: Check parameters before executing commands</li>
+<li><strong>Handle errors</strong>: Always check for errors and provide feedback</li>
+</ol>
+<h3 id="error-handling">Error Handling</h3>
+<ul>
+<li>Always check <code>err != nil</code> before using results</li>
+<li>Return meaningful error messages</li>
+<li>Provide context about what went wrong</li>
+<li>Use color functions to highlight errors</li>
+</ul>
+<h3 id="function-naming">Function Naming</h3>
+<ul>
+<li>Use descriptive names: <code>goGosh()</code>, <code>buildAndTest()</code>, <code>projectInfo()</code></li>
+<li>Follow Go naming conventions</li>
+<li>Group related functions with prefixes: <code>go*</code> for navigation, <code>db*</code> for database</li>
+</ul>
+<hr />
+<p>Ready to explore specific configurations? Check out our <a href="../config/">Configuration Examples</a> or the complete <a href="../reference/">CLI Reference</a>!</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
