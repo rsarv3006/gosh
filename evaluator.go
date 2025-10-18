@@ -11,23 +11,30 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/traefik/yaegi/interp"
 	"github.com/traefik/yaegi/stdlib"
 )
 
+// Global reference to shell state for shellapi access
+var globalShellState *ShellState
+var shellStateMutex sync.Mutex
+
 
 
 type GoEvaluator struct {
-	interp      *interp.Interpreter
-	stdoutPipe  *os.File
-	stderrPipe  *os.File
-	originalOut *os.File
-	originalErr *os.File
-	state       *ShellState
-	spawner     *ProcessSpawner
-	builtins    *BuiltinHandler // Add builtin handler reference
-	configFuncs map[string]reflect.Value // Store config functions for calling
+	interp         *interp.Interpreter
+	stdoutPipe     *os.File
+	stderrPipe     *os.File
+	originalOut    *os.File
+	originalErr    *os.File
+	state          *ShellState
+	spawner        *ProcessSpawner
+	builtins       *BuiltinHandler // Add builtin handler reference
+	configFuncs    map[string]reflect.Value // Store config functions for calling
+	
+	
 }
 
 func NewGoEvaluator() *GoEvaluator {
@@ -66,13 +73,48 @@ import (
 		fmt.Printf("Warning: Failed to preload packages: %v\n", err)
 	}
 
+	
+	
+	
+	
 	// Inject shellapi functions that use os/exec internally (whitelisted via Go code)
 	shellapiSymbols := map[string]map[string]reflect.Value{
 		"shellapi/shellapi": {
 			"RunShell": reflect.ValueOf(func(name string, args ...string) (string, error) {
-				// Handle cd specially - return marker for actual directory change
+				// Handle cd specially - IMMEDIATELY change the directory so it works within functions
 				if name == "cd" && len(args) > 0 {
-					return "@GOSH_INTERNAL_CD:" + args[0], nil
+					targetPath := args[0]
+					
+					// Handle path expansion
+					var expandedPath string
+					if strings.HasPrefix(targetPath, "~") {
+						home := os.Getenv("HOME")
+						if len(targetPath) == 1 {
+							expandedPath = home
+						} else {
+							expandedPath = filepath.Join(home, targetPath[1:])
+						}
+					} else if filepath.IsAbs(targetPath) {
+						expandedPath = targetPath
+					} else {
+						cwd, _ := os.Getwd()
+						expandedPath = filepath.Join(cwd, targetPath)
+					}
+					
+					// Perform actual directory change immediately - THIS IS THE FIX!
+					if err := os.Chdir(expandedPath); err != nil {
+						return fmt.Sprintf("cd: %s: %v", targetPath, err), nil
+					}
+					
+					// CRITICAL: Update global shell state for ALL cases (interactive and function calls)
+					shellStateMutex.Lock()
+					if globalShellState != nil {
+						globalShellState.WorkingDirectory = expandedPath
+					}
+					shellStateMutex.Unlock()
+					
+					// Return the marker for config function calling compatibility  
+					return "@GOSH_INTERNAL_CD:" + targetPath, nil
 				}
 				
 				// Execute command using os/exec in Go code (this works - we whitelisted os/exec manually)
@@ -137,6 +179,11 @@ import (
 func (g *GoEvaluator) SetupWithShell(state *ShellState, spawner *ProcessSpawner) {
 	g.state = state
 	g.spawner = spawner
+	
+	// Set global reference for shellapi access
+	shellStateMutex.Lock()
+	globalShellState = state
+	shellStateMutex.Unlock()
 }
 
 func (g *GoEvaluator) SetupWithBuiltins(builtins *BuiltinHandler) {
@@ -351,6 +398,10 @@ func (g *GoEvaluator) Eval(code string) ExecutionResult {
 							if cdResult.Error != nil {
 								output = "CD ERROR: " + cdResult.Error.Error()
 							} else {
+								// CRITICAL: sync shell state with actual OS working directory for proper prompt display
+								if currentDir, err := os.Getwd(); err == nil {
+									g.state.WorkingDirectory = currentDir
+								}
 								output = "" // Successful cd produces no output
 							}
 						} else {

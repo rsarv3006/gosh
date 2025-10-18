@@ -1,12 +1,71 @@
-# gosh MVP 0.0.1 Release Notes
+# gosh Release Notes
 
-## 🚀 Major Release: Shellapi Integration!
+## v0.2.4 - Critical Bug Fix Release 🎉
 
-**gosh v0.2.0** introduces a comprehensive shellapi integration that transforms gosh from a basic hybrid shell into a powerful extensible development environment with 100+ shell functions.
+### 🐛 **Critical Bug Fixed: Sequential Directory Operations in Functions**
 
-## 🎉 First Release!
+#### **Problem:**
+In versions prior to v0.2.4, when multiple `cd` operations were used within a function, only the last directory change would persist at the end of the function. This broke expected shell workflow patterns and made multi-step operations impossible.
 
-**gosh v0.0.1** is a hybrid shell that combines Go's interpreter (via yaegi) with traditional command execution. This is the MVP release that provides a solid foundation for daily driver usage.
+#### **Example of Broken Behavior (v0.2.3 and earlier):**
+```go
+func brokenExample() {
+    goConfig()     // Changes to config, but immediately overridden
+    fmt.Println("HELLO")  // Prints, but we're not in config anymore  
+    goGosh()       // Changes to gosh, but immediately overridden
+    fmt.Println("Hello")  // Prints, but we're not in gosh anymore
+    goConfig()     // Only this change persists at the end
+}
+// ❌ Only the final `goConfig()` change would actually work
+```
+
+#### **Solution Implemented:**
+✅ **Immediate Directory Changes**: `shellapi.RunShell("cd", path)` now executes `os.Chdir()` immediately  
+✅ **Real-Time Shell State Updates**: Prompt and shell state update with each directory change  
+✅ **Thread-Safe Synchronization**: Uses mutex to ensure consistent state  
+✅ **Universal Coverage**: Works for direct calls, interactive calls, AND calls within functions
+
+#### **Example of Working Behavior (v0.2.4):**
+```go
+func workingExample() {
+    goConfig()     // ✅ Changes to config immediately
+    fmt.Println("HELLO")  // ✅ Prints while in config directory
+    goGosh()       // ✅ Changes to gosh immediately  
+    fmt.Println("Hello")  // ✅ Prints while in gosh directory
+    goConfig()     // ✅ Changes back to config immediately
+}
+// 🎉 All directory changes work in sequence with proper prompt updates
+```
+
+### 🚀 **Impact for Users**
+
+Users can now write natural shell workflows that navigate between directories and perform operations exactly as expected:
+
+```go
+func deployWorkflow() {
+    goConfig()    // Changes to config → loads configuration
+    goProject()    // Changes to project → builds application  
+    goDeploy()     // Changes to deploy → copies artifacts
+    goConfig()    // Returns to config → updates status
+}
+```
+
+### 🔧 **Technical Implementation**
+
+- **Global Shell State Access**: Created thread-safe global reference to shell state
+- **Immediate OS Updates**: `os.Chdir()` happens when `shellapi.RunShell("cd", path)` is called
+- **Shell State Synchronization**: Both OS working directory and prompt state updated in real-time
+- **Backward Compatibility**: Existing CD marker processing continues to work
+
+### 🎯 **Verification**
+
+The fix has been thoroughly tested with:
+- Sequential directory changes within functions ✅
+- File operations in the correct directories ✅  
+- Proper prompt updates during and after execution ✅
+- Both config function calls and direct shellapi calls ✅
+
+## v0.2.3
 
 ## What's in MVP 0.0.1
 

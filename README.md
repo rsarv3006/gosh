@@ -556,6 +556,22 @@ go build
 ✅ **Real Command Execution (v0.2.2)**
 gosh v0.2.2 features shellapi functions that execute real commands via Go's `os/exec`, providing actual command output and persistent directory changes.
 
+**🎉 Phase 5 Complete - Sequential Directory Operations (v0.2.4)**:
+
+✅ **Fixed Critical Bug** - Directory changes within functions now work correctly. Previously, only the last `cd` operation would persist within a function, breaking expected shell workflow patterns. This fix enables multi-step shell workflows with immediate directory changes and proper prompt updates.
+
+```go
+// This now works perfectly (v0.2.4+)
+func deployWorkflow() {
+    goConfig()    // Changes to config directory immediately
+    loadConfig()  // Operations happen in config directory
+    goProject()    // Changes to project directory immediately  
+    build()        // Operations happen in project directory
+    goDeploy()     // Changes to deploy location immediately
+    copyFiles()   // Operations happen in deploy directory
+}
+```
+
 ```go
 // ~/.config/gosh/config.go
 package main

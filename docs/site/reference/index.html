@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>CLI Reference - My Docs</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">My Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href=".." class="nav-link">gosh - Go Shell</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../config/" class="nav-link">Configuration Examples</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../getting-started/" class="nav-link">Getting Started</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../guide/" class="nav-link">User Guide</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../install/" class="nav-link">Installation</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="./" class="nav-link active" aria-current="page">CLI Reference</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../install/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" class="nav-link disabled">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#cli-reference" class="nav-link">CLI Reference</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#command-line-options" class="nav-link">Command Line Options</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#built-in-commands" class="nav-link">Built-in Commands</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#go-repl-features" class="nav-link">Go REPL Features</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#command-substitution" class="nav-link">Command Substitution</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#shellapi-functions-reference" class="nav-link">Shellapi Functions Reference</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#gosh_lib-complete-function-library" class="nav-link">gosh_lib - Complete Function Library</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#error-handling" class="nav-link">Error Handling</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#signal-handling" class="nav-link">Signal Handling</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#performance-considerations" class="nav-link">Performance Considerations</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="cli-reference">CLI Reference</h1>
+<p>Complete reference for gosh command-line options, built-in commands, and shellapi functions.</p>
+<h2 id="command-line-options">Command Line Options</h2>
+<h3 id="gosh">gosh</h3>
+<p>Start an interactive gosh session:</p>
+<pre><code class="language-bash">gosh
+</code></pre>
+<h3 id="options">Options</h3>
+<ul>
+<li><code>-v, --version</code> - Show version information</li>
+<li><code>-h, --help</code> - Show help message</li>
+<li><code>-c '&lt;command&gt;'</code> - Execute single command and exit</li>
+</ul>
+<pre><code class="language-bash"># Show version
+gosh --version
+
+# Show help
+gosh --help
+
+# Execute Go code
+gosh -c 'fmt.Println(&quot;Hello world&quot;)'
+
+# Execute shell command
+gosh -c 'ls -la'
+
+# Mixed command
+gosh -c 'files := $(ls); fmt.Printf(&quot;Found %d files\n&quot;, len(strings.Split(files, &quot;\n&quot;)))'
+</code></pre>
+<h2 id="built-in-commands">Built-in Commands</h2>
+<h3 id="cd">cd <path></h3>
+<p>Change to the specified directory.</p>
+<pre><code class="language-bash">gosh&gt; cd ~/projects
+gosh&gt; cd /tmp
+gosh&gt; cd ..        # Parent directory
+gosh&gt; cd ../sibling # Sibling directory
+</code></pre>
+<h3 id="pwd">pwd</h3>
+<p>Print the current working directory.</p>
+<pre><code class="language-bash">gosh&gt; pwd
+/Users/username/projects/gosh
+</code></pre>
+<h3 id="exit">exit</h3>
+<p>Exit gosh and return to the previous shell.</p>
+<pre><code class="language-bash">gosh&gt; exit
+</code></pre>
+<h3 id="help">help</h3>
+<p>Display help information for built-in commands.</p>
+<pre><code class="language-bash">gosh&gt; help
+Available built-ins:
+- cd &lt;path&gt;          Change directory
+- pwd                Print working directory  
+- exit               Exit gosh
+- init               Create example config
+- help               Show this help
+</code></pre>
+<h3 id="init">init</h3>
+<p>Create an example configuration file at <code>~/.config/gosh/config.go</code>.</p>
+<pre><code class="language-bash">gosh&gt; init
+✅ Created example config: ~/.config/gosh/config.go
+</code></pre>
+<h2 id="go-repl-features">Go REPL Features</h2>
+<h3 id="variable-assignment">Variable Assignment</h3>
+<pre><code class="language-bash">gosh&gt; x := 42
+gosh&gt; name := &quot;gosh&quot;
+gosh&gt; files := $(ls)
+</code></pre>
+<h3 id="function-definition">Function Definition</h3>
+<pre><code class="language-bash">gosh&gt; func add(a, b int) int {
+...     return a + b
+... }
+</code></pre>
+<h3 id="control-structures">Control Structures</h3>
+<pre><code class="language-bash">gosh&gt; for i := 0; i &lt; 3; i++ {
+...     fmt.Println(i)
+... }
+
+gosh&gt; if true {
+...     fmt.Println(&quot;it's true&quot;)
+... }
+</code></pre>
+<h3 id="import-support">Import Support</h3>
+<p>Common packages are pre-imported automatically:</p>
+<ul>
+<li><code>fmt</code></li>
+<li><code>os</code></li>
+<li><code>strings</code> </li>
+<li><code>time</code></li>
+<li><code>filepath</code></li>
+<li><code>io/ioutil</code></li>
+<li><code>encoding/json</code></li>
+</ul>
+<pre><code class="language-bash">gosh&gt; fmt.Println(&quot;Hello&quot;)
+gosh&gt; os.Getenv(&quot;HOME&quot;)
+gosh&gt; strings.Split(&quot;a,b,c&quot;, &quot;,&quot;)
+gosh&gt; time.Now()
+</code></pre>
+<h2 id="command-substitution">Command Substitution</h2>
+<h3 id="syntax">Syntax</h3>
+<pre><code class="language-bash">variable := $(command)
+</code></pre>
+<h3 id="examples">Examples</h3>
+<pre><code class="language-bash"># Capture file list
+files := $(ls)
+
+# Capture git status
+status := $(git status --porcelain)
+
+# Capture file count
+count := $(ls | wc -l)
+
+# Use in expressions
+if $(git status) == &quot;&quot; {
+    fmt.Println(&quot;Working directory is clean&quot;)
+}
+
+# Complex commands
+timestamp := $(date +%Y%m%d_%H%M%S)
+backupFile := $(echo $HOME/.ssh/backup_${timestamp}.tar)
+</code></pre>
+<h2 id="shellapi-functions-reference">Shellapi Functions Reference</h2>
+<h3 id="file-operations">📁 File Operations</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Ls()</code></td>
+<td>Basic file listing</td>
+<td><code>ls</code></td>
+</tr>
+<tr>
+<td><code>LsColor()</code></td>
+<td>Colorized file listing</td>
+<td><code>ls --color=auto</code></td>
+</tr>
+<tr>
+<td><code>LsSortBySize()</code></td>
+<td>Files sorted by size</td>
+<td><code>ls -S</code></td>
+</tr>
+<tr>
+<td><code>Tree()</code></td>
+<td>Directory tree structure</td>
+<td><code>tree</code></td>
+</tr>
+<tr>
+<td><code>Find(pattern)</code></td>
+<td>Find files by pattern</td>
+<td><code>find . -name pattern</code></td>
+</tr>
+<tr>
+<td><code>Grep(pattern, args...)</code></td>
+<td>Search in files</td>
+<td><code>grep pattern file</code></td>
+</tr>
+<tr>
+<td><code>Cat(file)</code></td>
+<td>Display file contents</td>
+<td><code>cat file</code></td>
+</tr>
+<tr>
+<td><code>Head(n, file)</code></td>
+<td>First N lines of file</td>
+<td><code>head -n file</code></td>
+</tr>
+<tr>
+<td><code>Tail(n, file)</code></td>
+<td>Last N lines of file</td>
+<td><code>tail -n file</code></td>
+</tr>
+<tr>
+<td><code>Touch(filename)</code></td>
+<td>Create/update file timestamp</td>
+<td><code>touch filename</code></td>
+</tr>
+<tr>
+<td><code>MakeDir(dir)</code></td>
+<td>Create directory</td>
+<td><code>mkdir dir</code></td>
+</tr>
+<tr>
+<td><code>RemoveFile(file)</code></td>
+<td>Delete file</td>
+<td><code>rm file</code></td>
+</tr>
+<tr>
+<td><code>RemoveDir(dir)</code></td>
+<td>Delete directory</td>
+<td><code>rm -rf dir</code></td>
+</tr>
+<tr>
+<td><code>FileExists(path)</code></td>
+<td>Check if file exists</td>
+<td><code>test -f</code></td>
+</tr>
+<tr>
+<td><code>IsDirectory(path)</code></td>
+<td>Check if path is directory</td>
+<td><code>test -d</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="git-operations">🔧 Git Operations</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GitStatus()</code></td>
+<td>Repository status</td>
+<td><code>git status</code></td>
+</tr>
+<tr>
+<td><code>GitLog()</code></td>
+<td>Recent commits</td>
+<td><code>git log --oneline</code></td>
+</tr>
+<tr>
+<td><code>GitBranch()</code></td>
+<td>Current branch name</td>
+<td><code>git branch --show-current</code></td>
+</tr>
+<tr>
+<td><code>GitDiff()</code></td>
+<td>Git diff output</td>
+<td><code>git diff</code></td>
+</tr>
+<tr>
+<td><code>GitAdd(files...)</code></td>
+<td>Add files to staging</td>
+<td><code>git add files</code></td>
+</tr>
+<tr>
+<td><code>GitCommit(msg)</code></td>
+<td>Create commit</td>
+<td><code>git commit -m msg</code></td>
+</tr>
+<tr>
+<td><code>QuickCommit(msg)</code></td>
+<td>Add all and commit</td>
+<td><code>git add . &amp;&amp; git commit</code></td>
+</tr>
+<tr>
+<td><code>GitPull()</code></td>
+<td>Pull latest changes</td>
+<td><code>git pull</code></td>
+</tr>
+<tr>
+<td><code>GitPush()</code></td>
+<td>Push to remote</td>
+<td><code>git push</code></td>
+</tr>
+<tr>
+<td><code>GitStashList()</code></td>
+<td>List stashes</td>
+<td><code>git stash list</code></td>
+</tr>
+<tr>
+<td><code>GitStashPush(msg)</code></td>
+<td>Create stash</td>
+<td><code>git stash push -m msg</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="development-tools">🛠 Development Tools</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GoBuild()</code></td>
+<td>Build Go project</td>
+<td><code>go build</code></td>
+</tr>
+<tr>
+<td><code>GoRun()</code></td>
+<td>Run Go project</td>
+<td><code>go run .</code></td>
+</tr>
+<tr>
+<td><code>GoTest()</code></td>
+<td>Run tests</td>
+<td><code>go test -v</code></td>
+</tr>
+<tr>
+<td><code>GoTestRun()</code></td>
+<td>Build and test</td>
+<td><code>go test -v -run ./...</code></td>
+</tr>
+<tr>
+<td><code>GoInstall(pkg)</code></td>
+<td>Install Go package</td>
+<td><code>go install pkg</code></td>
+</tr>
+<tr>
+<td><code>GoFmt()</code></td>
+<td>Format Go code</td>
+<td><code>go fmt</code></td>
+</tr>
+<tr>
+<td><code>GoGet()</code></td>
+<td>Get dependencies</td>
+<td><code>go get</code></td>
+</tr>
+<tr>
+<td><code>GoTidy()</code></td>
+<td>Clean dependencies</td>
+<td><code>go mod tidy</code></td>
+</tr>
+<tr>
+<td><code>GoVet()</code></td>
+<td>Run go vet</td>
+<td><code>go vet</code></td>
+</tr>
+<tr>
+<td><code>NpmInstall(pkg)</code></td>
+<td>Install npm package</td>
+<td><code>npm install pkg</code></td>
+</tr>
+<tr>
+<td><code>NpmRun(script)</code></td>
+<td>Run npm script</td>
+<td><code>npm run script</code></td>
+</tr>
+<tr>
+<td><code>PipInstall(pkg)</code></td>
+<td>Install Python package</td>
+<td><code>pip install pkg</code></td>
+</tr>
+<tr>
+<td><code>DockerPs()</code></td>
+<td>List containers</td>
+<td><code>docker ps</code></td>
+</tr>
+<tr>
+<td><code>DockerImages()</code></td>
+<td>List images</td>
+<td><code>docker images</code></td>
+</tr>
+<tr>
+<td><code>DockerLogs(container)</code></td>
+<td>Container logs</td>
+<td><code>docker logs container</code></td>
+</tr>
+<tr>
+<td><code>DockerStop(container)</code></td>
+<td>Stop container</td>
+<td><code>docker stop container</code></td>
+</tr>
+<tr>
+<td><code>DockerRm(container)</code></td>
+<td>Remove container</td>
+<td><code>docker rm container</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="system-information">💻 System Information</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Uptime()</code></td>
+<td>System uptime</td>
+<td><code>uptime</code></td>
+</tr>
+<tr>
+<td><code>Whoami()</code></td>
+<td>Current user</td>
+<td><code>whoami</code></td>
+</tr>
+<tr>
+<td><code>Date()</code></td>
+<td>Current date/time</td>
+<td><code>date</code></td>
+</tr>
+<tr>
+<td><code>Hostname()</code></td>
+<td>System hostname</td>
+<td><code>hostname</code></td>
+</tr>
+<tr>
+<td><code>OS()</code></td>
+<td>Kernel name</td>
+<td><code>uname -s</code></td>
+</tr>
+<tr>
+<td><code>Arch()</code></td>
+<td>System architecture</td>
+<td><code>uname -m</code></td>
+</tr>
+<tr>
+<td><code>Pwd()</code></td>
+<td>Working directory</td>
+<td><code>pwd</code></td>
+</tr>
+<tr>
+<td><code>Df()</code></td>
+<td>Disk usage</td>
+<td><code>df -h</code></td>
+</tr>
+<tr>
+<td><code>Free()</code></td>
+<td>Memory usage</td>
+<td><code>free -h</code></td>
+</tr>
+<tr>
+<td><code>Ps()</code></td>
+<td>Running processes</td>
+<td><code>ps aux</code></td>
+</tr>
+<tr>
+<td><code>Kill(pid)</code></td>
+<td>Terminate process</td>
+<td><code>kill pid</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="formatting-display">🎨 Formatting &amp; Display</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Red(str)</code></td>
+<td>Red text</td>
+<td>Text in red</td>
+</tr>
+<tr>
+<td><code>Green(str)</code></td>
+<td>Green text</td>
+<td>Text in green</td>
+</tr>
+<tr>
+<td><code>Blue(str)</code></td>
+<td>Blue text</td>
+<td>Text in blue</td>
+</tr>
+<tr>
+<td><code>Yellow(str)</code></td>
+<td>Yellow text</td>
+<td>Text in yellow</td>
+</tr>
+<tr>
+<td><code>Purple(str)</code></td>
+<td>Magenta text</td>
+<td>Text in magenta</td>
+</tr>
+<tr>
+<td><code>Cyan(str)</code></td>
+<td>Cyan text</td>
+<td>Text in cyan</td>
+</tr>
+<tr>
+<td><code>Bold(str)</code></td>
+<td>Bold text</td>
+<td><strong>Text</strong></td>
+</tr>
+<tr>
+<td><code>Underline(str)</code></td>
+<td>Underlined text</td>
+<td><u>Text</u></td>
+</tr>
+<tr>
+<td><code>Italic(str)</code></td>
+<td>Italic text</td>
+<td><em>Text</em></td>
+</tr>
+<tr>
+<td><code>Success(str)</code></td>
+<td>Green checkmark</td>
+<td>✓ Success</td>
+</tr>
+<tr>
+<td><code>Error(str)</code></td>
+<td>Red cross mark</td>
+<td>✗ Error</td>
+</tr>
+<tr>
+<td><code>Warning(str)</code></td>
+<td>Yellow triangle</td>
+<td>⚠ Warning</td>
+</tr>
+<tr>
+<td><code>Info(str)</code></td>
+<td>Blue info circle</td>
+<td>ℹ Info</td>
+</tr>
+<tr>
+<td><code>SuccessMsg(label, msg)</code></td>
+<td>Success message with label</td>
+<td>✓ Label: Message</td>
+</tr>
+<tr>
+<td><code>ErrorMsg(msg)</code></td>
+<td>Error message with formatting</td>
+<td>✗ Error message</td>
+</tr>
+<tr>
+<td><code>WarnMsg(label, msg)</code></td>
+<td>Warning with label</td>
+<td>⚠ Label: Message</td>
+</tr>
+<tr>
+<td><code>InfoMsg(label, msg)</code></td>
+<td>Info message with label</td>
+<td>ℹ Label: Message</td>
+</tr>
+</tbody>
+</table>
+<h4 id="color-usage-examples">Color Usage Examples</h4>
+<pre><code class="language-bash"># In config.go
+func greetUser(name string) {
+    greeting := shellapi.Green(fmt.Sprintf(&quot;Hello %s!&quot;, name))
+    fmt.Println(greeting)
+}
+
+func showStatus(msg string) {
+    status := shellapi.InfoMsg(&quot;Status&quot;, msg)
+    fmt.Println(status)
+}
+
+func reportError(err string) {
+    error := shellapi.ErrorMsg(&quot;Error&quot;, err)
+    fmt.Println(error)
+}
+</code></pre>
+<h2 id="gosh_lib-complete-function-library">gosh_lib - Complete Function Library</h2>
+<h3 id="installation">Installation</h3>
+<p>Add gosh_lib to your Go module:</p>
+<pre><code class="language-bash">go get github.com/rsarv3006/gosh_lib/shellapi
+</code></pre>
+<h3 id="import-in-config">Import in Config</h3>
+<pre><code class="language-go">// ~/.config/gosh/config.go
+package main
+
+import (
+    &quot;fmt&quot;
+    &quot;github.com/rsarv3006/gosh_lib/shellapi&quot;
+)
+
+func init() {
+    fmt.Println(&quot;🚀 gosh with shellapi loaded!&quot;)
+}
+</code></pre>
+<h3 id="runshell-function-core-engine">RunShell Function - Core Engine</h3>
+<p>The <code>shellapi.RunShell</code> function executes real shell commands and handles special cases like directory changes:</p>
+<pre><code class="language-go">// Basic command execution
+result, err := shellapi.RunShell(&quot;command&quot;, &quot;arg1&quot;, &quot;arg2&quot;)
+
+// Directory changes that persist
+func goProject() string {
+    result, err := shellapi.RunShell(&quot;cd&quot;, &quot;/path/to/project&quot;)
+    if err != nil {
+        return &quot;CD ERROR: &quot; + err.Error()
+    }
+    return result  // Directory actually changes!
+}
+
+// System commands
+msg, err := shellapi.RunShell(&quot;uptime&quot;)
+files, err := shellapi.RunShell(&quot;ls&quot;, &quot;-la&quot;)
+
+# Multi-argument commands with spaces
+result, err := shellapi.RunShell(&quot;git&quot;, &quot;commit&quot;, &quot;-m&quot;, &quot;Fixed bug in user login&quot;)
+</code></pre>
+<h3 id="directory-change-integration">Directory Change Integration</h3>
+<p>Directory changes work seamlessly with the gosh shell:</p>
+<pre><code class="language-go">func navigationExample() string {
+    // This actually changes directories in the shell session!
+    if result, err := shellapi.RunShell(&quot;cd&quot;, &quot;/tmp&quot;); err == nil {
+        return &quot;Switched to temp directory&quot;
+    }
+    return &quot;Failed to change directory&quot;
+}
+
+// Usage in gosh:
+// gosh&gt; navigationExample()
+// Switched to temp directory  
+// gosh&gt; pwd
+// /tmp   # Directory actually changed!
+</code></pre>
+<h3 id="complete-function-categories">Complete Function Categories</h3>
+<h4 id="project-helpers">Project Helpers</h4>
+<pre><code class="language-go">MakeTarget(target)       # Run make target
+MakeBuild()              # make build
+MakeClean()             # make clean  
+MakeTest()              # make test
+RunTests()              # Build and test
+BuildAndTest()          # Build and test combined
+CreateProjectDir(name)  # Create project directory
+TouchFile(filename)     # Touch file
+JoinPaths(parts...)     # Join paths safely
+Basename(path)          # Get filename only
+Dirname(path)           # Get directory only
+ExpandUserHome(path)     # Expand ~ to home
+GetScriptDir()          # Get script directory
+</code></pre>
+<h4 id="text-processing">Text Processing</h4>
+<pre><code class="language-go">Clean(str)              # Clean string
+Trim(str)               # Trim whitespace
+Upper(str)              # Uppercase
+Lower(str)              # Lowercase
+Title(str)              # Title case
+Replace(str, old, new)  # Replace text
+Contains(str, sub)      # Check substring
+HasPrefix(str, prefix)  # Check prefix
+HasSuffix(str, suffix)  # Check suffix
+</code></pre>
+<h4 id="environment-variables">Environment Variables</h4>
+<pre><code class="language-go">EnvVar(name)            # Get environment variable
+Getenv(name, fallback)  # Env var with fallback
+ExportEnv(name, value)  # Set environment variable
+UnsetEnv(name)          # Unset environment variable
+ListEnv()               # List all environment variables
+</code></pre>
+<h4 id="path-operations">Path Operations</h4>
+<pre><code class="language-go">PathExists(path)        # Check if path exists
+FileExists(path)        # Check if file exists
+IsFile(path)            # Check if path is file
+IsDir(path)             # Check if path is directory
+Readable(path)          # Check if readable
+Writable(path)          # Check if writable
+Executable(path)        # Check if executable
+FileSize(path)          # Get file size
+FileModTime(path)       # Get modification time
+</code></pre>
+<h2 id="error-handling">Error Handling</h2>
+<h3 id="shellapi-error-handling">Shellapi Error Handling</h3>
+<p>All shellapi functions return <code>(string, error)</code> tuples:</p>
+<pre><code class="language-go">func safeOperation() string {
+    result, err := shellapi.GitStatus()
+    if err != nil {
+        return shellapi.ErrorMsg(&quot;Git Error&quot;, err.Error())
+    }
+    return shellapi.SuccessMsg(&quot;Git Status&quot;, result)
+}
+
+func directoryOperation() string {
+    result, err := shellapi.RunShell(&quot;cd&quot;, &quot;/some/path&quot;)
+    if err != nil {
+        return shellapi.ErrorMsg(&quot;Directory Error&quot;, err.Error())
+    }
+    return shellapi.SuccessMsg(&quot;Directory&quot;, &quot;Changed successfully&quot;)
+}
+</code></pre>
+<h3 id="go-code-error-handling">Go Code Error Handling</h3>
+<p>In the REPL, errors show line numbers:</p>
+<pre><code class="language-bash">gosh&gt; undefined_function
+Error: undefined: undefined_function on line 1
+
+gosh&gt; fmt.Println(undefined_var)
+Error: undefined: undefined_var on line 1
+</code></pre>
+<h2 id="signal-handling">Signal Handling</h2>
+<h3 id="ctrlc-behavior">Ctrl+C Behavior</h3>
+<ul>
+<li><strong>Interrupt Go code</strong>: Stops current Go execution</li>
+<li><strong>Interrupt shell commands</strong>: Properly terminates subprocesses</li>
+<li><strong>Preserves session</strong>: Continues interactive shell</li>
+</ul>
+<h3 id="signal-propagation">Signal Propagation</h3>
+<pre><code class="language-bash">gosh&gt; # Long-running command
+gosh&gt; for i := 0; i &lt; 100; i++ {
+...     fmt.Println(i)
+...     time.Sleep(1 * time.Second)
+... }
+
+# Press Ctrl+C to interrupt
+^C
+gosh&gt; # Shell continues running
+</code></pre>
+<h2 id="performance-considerations">Performance Considerations</h2>
+<h3 id="command-execution">Command Execution</h3>
+<ul>
+<li>Commands use Go's <code>os/exec</code> for real execution</li>
+<li>Output is fully captured as strings</li>
+<li>Large outputs are truncated at 40,000 characters</li>
+</ul>
+<h3 id="memory-usage">Memory Usage</h3>
+<ul>
+<li>Go state persists across shell session</li>
+<li>Variables and functions remain defined</li>
+<li>Use <code>clear()</code> function to reset state (if available)</li>
+</ul>
+<h3 id="startup-time">Startup Time</h3>
+<ul>
+<li>Instant startup - no REPL initialization waiting</li>
+<li>Config file loading is asynchronous</li>
+<li>Shell session ready immediately</li>
+</ul>
+<h3 id="best-practices">Best Practices</h3>
+<ol>
+<li><strong>Use shellapi functions</strong>: Pre-built optimized functions</li>
+<li><strong>Cache expensive operations</strong>: Store results of costly commands</li>
+<li><strong>Handle errors</strong>: Always check error returns</li>
+<li><strong>Use color functions</strong>: Better readability</li>
+<li><strong>Group related functions</strong>: Consistent naming patterns</li>
+</ol>
+<hr />
+<p>Need more examples? Check out our <a href="../config/">Configuration Examples</a> for real-world configurations!</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
