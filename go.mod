@@ -1,6 +1,6 @@
 module github.com/rsarv3006/gosh
 
-go 1.21
+go 1.24.0
 
 require (
 	github.com/charmbracelet/lipgloss v1.1.0
@@ -8,7 +8,6 @@ require (
 	github.com/traefik/yaegi v0.16.1
 )
 
-// Add gosh_lib dependency
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/charmbracelet/colorprofile v0.2.3-0.20250311203215-f60798e515dc // indirect
@@ -20,6 +19,9 @@ require (
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
+	github.com/sourcegraph/jsonrpc2 v0.0.0-20211019150006-b4c7527a2970 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
-	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/net v0.33.0 // indirect
+	golang.org/x/sys v0.37.0 // indirect
+	golang.org/x/tools v0.31.0 // indirect
 )

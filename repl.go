@@ -16,12 +16,22 @@ import (
 
 func RunREPL(state *ShellState, evaluator *GoEvaluator, spawner *ProcessSpawner, builtins *BuiltinHandler) error {
 	router := NewRouter(builtins, state)
+	
+	// Create the intelligent completer to get access for cleanup
+	completer := NewGoshCompleter(evaluator)
+	
+	// Ensure cleanup on exit
+	defer func() {
+		if goshCompleter, ok := completer.(*GoshCompleter); ok {
+			goshCompleter.cleanup()
+		}
+	}()
 
 	// Setup signal handling
 	setupSignals(state)
 
 	// Try readline first, fallback to basic mode if it fails
-	rl, useReadline := setupReadlineWithFallback()
+	rl, useReadline := setupReadlineWithFallback(completer)
 	if useReadline {
 		defer rl.Close()
 	} else {
@@ -202,9 +212,9 @@ func looksLikePathCompletion(input string) bool {
 }
 
 // setupReadlineWithFallback attempts to setup readline with graceful fallback
-func setupReadlineWithFallback() (*readline.Instance, bool) {
+func setupReadlineWithFallback(completer readline.AutoCompleter) (*readline.Instance, bool) {
 	rl, err := readline.NewEx(&readline.Config{
-		AutoComplete: NewGoshCompleter(),
+		AutoComplete: completer,
 	})
 	if err != nil {
 		return nil, false

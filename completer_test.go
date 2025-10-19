@@ -10,7 +10,10 @@ import (
 )
 
 func TestGoshCompleter_completeCommands_InvalidInput(t *testing.T) {
-	c := NewGoshCompleter()
+	// Create a mock evaluator for testing
+	evaluator := NewGoEvaluator()
+	
+	c := NewGoshCompleter(evaluator)
 
 	// Empty input should return no matches
 	result, length := c.Do([]rune(""), 0)
@@ -25,7 +28,9 @@ func TestGoshCompleter_completeCommands_InvalidInput(t *testing.T) {
 }
 
 func TestGoshCompleter_completeCommands_NonexistentCommand(t *testing.T) {
-	c := NewGoshCompleter()
+	evaluator := NewGoEvaluator()
+	
+	c := NewGoshCompleter(evaluator)
 	
 	// Non-existent command should return no matches
 	result, _ := c.Do([]rune("nonexistent_command"), 18)
@@ -36,7 +41,9 @@ func TestGoshCompleter_completeCommands_NonexistentCommand(t *testing.T) {
 }
 
 func TestGoshCompleter_completeCommands_ExactMatch(t *testing.T) {
-	c := NewGoshCompleter()
+	evaluator := NewGoEvaluator()
+	
+	c := NewGoshCompleter(evaluator)
 	
 	// Exact command should return empty suffix
 	result, _ := c.Do([]rune("pwd"), 3)
@@ -59,7 +66,9 @@ func TestGoshCompleter_completeCommands_ExactMatch(t *testing.T) {
 }
 
 func TestGoshCompleter_completeCommands_WithMultiple(t *testing.T) {
-	c := NewGoshCompleter()
+	evaluator := NewGoEvaluator()
+	
+	c := NewGoshCompleter(evaluator)
 	
 	// Partial that matches multiple commands
 	result, _ := c.Do([]rune("c"), 1)
@@ -72,7 +81,8 @@ func TestGoshCompleter_completeCommands_WithMultiple(t *testing.T) {
 }
 
 func TestGoshCompleter_Do_CommandCompletion(t *testing.T) {
-	c := NewGoshCompleterForTesting()
+	evaluator := NewGoEvaluator()
+	c := NewGoshCompleterForTesting(evaluator)
 
 	tests := []struct {
 		name           string
@@ -155,7 +165,8 @@ func TestGoshCompleter_Do_CommandCompletion(t *testing.T) {
 }
 
 func TestGoshCompleter_Do_ArgumentCompletion_Help(t *testing.T) {
-	c := NewGoshCompleterForTesting()
+	evaluator := NewGoEvaluator()
+	c := NewGoshCompleterForTesting(evaluator)
 
 	tests := []struct {
 		name           string
@@ -226,7 +237,8 @@ func TestGoshCompleter_Do_ArgumentCompletion_Help(t *testing.T) {
 }
 
 func TestGoshCompleter_Do_FileCompletion(t *testing.T) {
-	c := NewGoshCompleterForTesting()
+	evaluator := NewGoEvaluator()
+	c := NewGoshCompleterForTesting(evaluator)
 
 	// Create a temporary directory with test files
 	tempDir := t.TempDir()
@@ -315,7 +327,8 @@ func TestGoshCompleter_Do_FileCompletion(t *testing.T) {
 }
 
 func TestGoshCompleter_completeCommands(t *testing.T) {
-	c := NewGoshCompleterForTesting()
+	evaluator := NewGoEvaluator()
+	c := NewGoshCompleterForTesting(evaluator)
 
 	tests := []struct {
 		partial         string
@@ -382,7 +395,8 @@ func TestGoshCompleter_completeCommands(t *testing.T) {
 }
 
 func TestGoshCompleter_completeFiles(t *testing.T) {
-	c := NewGoshCompleterForTesting()
+	evaluator := NewGoEvaluator()
+	c := NewGoshCompleterForTesting(evaluator)
 
 	// Create a temporary directory with test files
 	tempDir := t.TempDir()
@@ -449,7 +463,8 @@ func TestGoshCompleter_completeFiles(t *testing.T) {
 
 // Test local executable completion (regression test for local executables not completing)
 func TestGoshCompleter_completeCommands_LocalExecutables(t *testing.T) {
-	completer := NewGoshCompleterForTesting()
+	evaluator := NewGoEvaluator()
+	completer := NewGoshCompleterForTesting(evaluator)
 	
 	// Create a temporary directory with a test executable
 	tempDir := t.TempDir()
@@ -533,7 +548,8 @@ func createTestExecutable(t *testing.T, dir, name string) {
 
 // TestLocalExecutableCompletionWithDotSlash tests the ./prefix completion behavior
 func TestLocalExecutableCompletionWithDotSlash(t *testing.T) {
-	completer := NewGoshCompleterForTesting()
+	evaluator := NewGoEvaluator()
+	completer := NewGoshCompleterForTesting(evaluator)
 	
 	// Create a temporary directory with test executables
 	tempDir := t.TempDir()

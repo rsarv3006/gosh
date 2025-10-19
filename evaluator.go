@@ -572,7 +572,7 @@ func (g *GoEvaluator) EvalWithRecovery(code string) ExecutionResult {
 		if r := recover(); r != nil {
 			fmt.Fprintf(os.Stderr, "\n🚨 CRITICAL: yaegi interpreter crashed!\n")
 			fmt.Fprintf(os.Stderr, "🚨 ERROR: Go evaluation may be unstable. Consider restarting.\n")
-			fmt.Fprintf(os.Stderr, "🚨 ERROR: Last command was: %s\n", code[:min(len(code), 50)])
+			fmt.Fprintf(os.Stderr, "🚨 ERROR: Last command was: %s\n", code[:evaluatorMin(len(code), 50)])
 		}
 	}()
 	
@@ -583,7 +583,8 @@ func (g *GoEvaluator) EvalWithRecovery(code string) ExecutionResult {
 
 
 
-func min(a, b int) int {
+// min function for evaluator use
+func evaluatorMin(a, b int) int {
 	if a < b {
 		return a
 	}

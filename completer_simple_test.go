@@ -7,7 +7,9 @@ import (
 )
 
 func TestGoshCompleter_BasicCommandCompletion(t *testing.T) {
-	c := NewGoshCompleterForTesting()
+	evaluator := NewGoEvaluator()
+	
+	c := NewGoshCompleterForTesting(evaluator)
 
 	// Test that 'wh' finds matches (could be whoami or other PATH executables)
 	matches, length := c.Do([]rune("wh"), 2)
@@ -28,7 +30,9 @@ func TestGoshCompleter_BasicCommandCompletion(t *testing.T) {
 }
 
 func TestGoshCompleter_ExactMatch(t *testing.T) {
-	c := NewGoshCompleterForTesting()
+	evaluator := NewGoEvaluator()
+	
+	c := NewGoshCompleterForTesting(evaluator)
 
 	// Test that exact match 'whoami' returns empty suffix
 	matches, length := c.Do([]rune("whoami"), 6)
@@ -48,7 +52,9 @@ func TestGoshCompleter_ExactMatch(t *testing.T) {
 }
 
 func TestGoshCompleter_NoMatch(t *testing.T) {
-	c := NewGoshCompleterForTesting()
+	evaluator := NewGoEvaluator()
+	
+	c := NewGoshCompleterForTesting(evaluator)
 
 	// Test that nonexistent command returns no matches
 	matches, length := c.Do([]rune("nonexistent"), 11)
@@ -63,7 +69,9 @@ func TestGoshCompleter_NoMatch(t *testing.T) {
 }
 
 func TestGoshCompleter_MultipleMatches(t *testing.T) {
-	c := NewGoshCompleterForTesting()
+	evaluator := NewGoEvaluator()
+	
+	c := NewGoshCompleterForTesting(evaluator)
 
 	// Test that partial 'c' returns multiple matches
 	matches, length := c.Do([]rune("c"), 1)
@@ -80,7 +88,9 @@ func TestGoshCompleter_MultipleMatches(t *testing.T) {
 }
 
 func TestGoshCompleter_completeCommands_Unit(t *testing.T) {
-	c := NewGoshCompleterForTesting()
+	evaluator := NewGoEvaluator()
+	
+	c := NewGoshCompleterForTesting(evaluator)
 
 	// Test the underlying completeCommands function directly
 	matches := c.completeCommands("wh")
@@ -97,7 +107,9 @@ func TestGoshCompleter_completeCommands_Unit(t *testing.T) {
 }
 
 func TestGoshCompleter_completeCommands_Multiple(t *testing.T) {
-	c := NewGoshCompleterForTesting()
+	evaluator := NewGoEvaluator()
+	
+	c := NewGoshCompleterForTesting(evaluator)
 
 	// Test multiple matches - should find cd, cat, and possibly PATH executables
 	matches := c.completeCommands("c")
