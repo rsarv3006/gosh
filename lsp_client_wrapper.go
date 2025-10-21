@@ -231,16 +231,44 @@ func (l *LSPClientWrapper) GetCompletions(line string, pos int) ([]LSPCompletion
 func (l *LSPClientWrapper) buildSessionContentWithCurrentLine(currentLine string) string {
 	content := "package main\n\nimport \"fmt\"\n\n"
 
-	// Add all session history at the top level
+	// Add all session history at package level, but only function definitions
+	// All other statements should go into session()
+	funcDefs := make([]string, 0)
+	executableStatements := make([]string, 0)
+
 	for _, line := range l.sessionHistory {
-		content += line + "\n"
+		// Check if this is a function definition (should stay at package level)
+		if strings.HasPrefix(strings.TrimSpace(line), "func ") {
+			funcDefs = append(funcDefs, line)
+		} else {
+			// Other lines are executable statements that go inside session()
+			executableStatements = append(executableStatements, line)
+		}
 	}
 
-	// Add session function with the current line inside it
-	content += "\nfunc session() {\n"
+	// Add function definitions at package level
+	for _, def := range funcDefs {
+		content += def + "\n"
+	}
+
+	// Add blank line after function definitions
+	if len(funcDefs) > 0 {
+		content += "\n"
+	}
+
+	// Add session function with all executable statements and the current line
+	content += "func session() {\n"
+
+	// Add all previous executable statements
+	for _, stmt := range executableStatements {
+		content += stmt + "\n"
+	}
+
+	// Add current line (if not empty)
 	if currentLine != "" {
 		content += currentLine + "\n"
 	}
+
 	content += "}\n"
 
 	return content

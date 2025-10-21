@@ -129,6 +129,8 @@ func (g *GoshCompleter) doGoCompletion(lineStr, partial string, pos int) [][]run
 	// Try LSP completion first if available
 	if g.lspEnabled && g.lspWrapper.IsReady() {
 		fmt.Fprintf(os.Stderr, "🎯 [COMPLETER] LSP ready, trying LSP completion first\n")
+		// Only attempt LSP completion if we have valid Go syntax
+		// For now, we'll still try to fallback to basic completion even with syntax issues
 		if lspMatches := g.doLSPCompletion(lineStr, partial, pos); len(lspMatches) > 0 {
 			fmt.Fprintf(os.Stderr, "✅ [COMPLETER] LSP provided %d matches, using those\n", len(lspMatches))
 			return lspMatches
@@ -188,10 +190,44 @@ func (g *GoshCompleter) doGoCompletion(lineStr, partial string, pos int) [][]run
 			})
 		}
 	default:
-		// General Go completion
+		// General Go completion - only get variables that match partial
+		// but don't add them to all suggestions as they cause conflicts with assignments
 		suggestions = g.symbolExtractor.GetCompletionSuggestions(partial)
-		if len(suggestions) == 0 {
-			suggestions = g.contextAnalyzer.GetCompletionSuggestions(ctx)
+
+		// Special handling for variable declaration contexts
+		if strings.Contains(lineStr, ":=") {
+			// In variable declaration context like "varName := func()"
+			// Only suggest functions and identifiers that could be used as values
+			funcSuggestions := g.symbolExtractor.GetFunctions(partial)
+			varSuggestions := g.symbolExtractor.GetVariables(partial)
+
+			// Merge without duplicates
+			seen := make(map[string]bool)
+			for _, s := range suggestions {
+				seen[s.Label] = true
+			}
+
+			for _, s := range funcSuggestions {
+				if !seen[s.Label] {
+					suggestions = append(suggestions, s)
+					seen[s.Label] = true
+				}
+			}
+
+			for _, s := range varSuggestions {
+				if !seen[s.Label] {
+					suggestions = append(suggestions, s)
+					seen[s.Label] = true
+				}
+			}
+		} else {
+			// For normal expressions, just add variables that match partial
+			variables := g.symbolExtractor.GetVariables(partial)
+			for _, v := range variables {
+				if !containsLabel(suggestions, v.Label) {
+					suggestions = append(suggestions, v)
+				}
+			}
 		}
 
 		// Add Go keywords for common patterns
@@ -247,6 +283,15 @@ func (g *GoshCompleter) doGoCompletion(lineStr, partial string, pos int) [][]run
 	fmt.Fprintf(os.Stderr, "📤 [COMPLETER] Returning %d matches to readline\n", len(matches))
 
 	return matches
+}
+
+func containsLabel(items []CompletionItem, lbl string) bool {
+	for _, it := range items {
+		if it.Label == lbl {
+			return true
+		}
+	}
+	return false
 }
 
 // doLSPCompletion performs LSP-based completion
