@@ -1,16 +1,17 @@
 package main
 
 import (
-	"bufio"
-	"encoding/json"
-	"fmt"
-	"io"
-	"os"
-	"os/exec"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
+    "bufio"
+    "encoding/json"
+    "fmt"
+    "io"
+    "os"
+    "os/exec"
+    "strconv"
+    "strings"
+    "sync"
+    "syscall"
+    "time"
 )
 
 // LSPCompletionItem represents a completion item from LSP
@@ -29,7 +30,9 @@ type LSPClientWrapper struct {
 	stdout  io.ReadCloser
 	stderr  io.ReadCloser
 	ready   bool
-	mu      sync.RWMutex
+    mu      sync.RWMutex
+    // serialize writes to stdin to avoid interleaving headers/content
+    writeMu sync.Mutex
 	msgID   int
 	pending map[int]chan *LSPResponse
 	// Session history to maintain context
@@ -89,7 +92,10 @@ type CompletionList struct {
 func NewLSPClientWrapper() (*LSPClientWrapper, error) {
 	fmt.Fprintf(os.Stderr, "🚀 [LSP] Starting gopls...\n")
 
-	cmd := exec.Command("gopls", "serve")
+    cmd := exec.Command("gopls", "serve")
+    // Run gopls in its own process group so terminal signals (Ctrl-C) sent to
+    // foreground child processes do not get delivered to gopls and kill it.
+    cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -336,19 +342,23 @@ func (l *LSPClientWrapper) sendMessage(request LSPRequest) error {
 		return err
 	}
 
-	// Send Content-Length header
-	header := fmt.Sprintf("Content-Length: %d\r\n\r\n", len(data))
-	if _, err := io.WriteString(l.stdin, header); err != nil {
-		return err
-	}
+    // Serialize writes to avoid interleaving headers/content from concurrent callers.
+    l.writeMu.Lock()
+    defer l.writeMu.Unlock()
 
-	// Send message content
-	if _, err := l.stdin.Write(data); err != nil {
-		return err
-	}
+    // Send Content-Length header
+    header := fmt.Sprintf("Content-Length: %d\r\n\r\n", len(data))
+    if _, err := io.WriteString(l.stdin, header); err != nil {
+        return err
+    }
 
-	fmt.Fprintf(os.Stderr, "📨 [LSP] Sent message: %s\n", string(data))
-	return nil
+    // Send message content
+    if _, err := l.stdin.Write(data); err != nil {
+        return err
+    }
+
+    fmt.Fprintf(os.Stderr, "📨 [LSP] Sent message: %s\n", string(data))
+    return nil
 }
 
 // readMessages reads responses from gopls in a goroutine
@@ -452,9 +462,9 @@ func (l *LSPClientWrapper) initialize() error {
 		return fmt.Errorf("failed to get working directory: %v", err)
 	}
 
-	initParams := map[string]interface{}{
-		"processId": 12345,
-		"rootUri":   "file://" + wd,
+    initParams := map[string]interface{}{
+        "processId": os.Getpid(),
+        "rootUri":   "file://" + wd,
 		"workspaceFolders": []map[string]interface{}{
 			{
 				"uri":  "file://" + wd,
@@ -493,29 +503,31 @@ func (l *LSPClientWrapper) initialize() error {
 	// Give gopls time to process the initialized notification
 	time.Sleep(100 * time.Millisecond)
 
-	// Send didOpen document (only once)
-	if !l.didOpenSent {
-		didOpenParams := map[string]interface{}{
-			"textDocument": map[string]interface{}{
-				"uri":        "file://" + l.virtualFile,
-				"languageId": "go",
-				"version":    1,
-			},
-		}
+    // Send didOpen document (only once) and include the initial text
+    if !l.didOpenSent {
+        initialText := l.buildSessionContentWithCurrentLine("")
+        didOpenParams := map[string]interface{}{
+            "textDocument": map[string]interface{}{
+                "uri":        "file://" + l.virtualFile,
+                "languageId": "go",
+                "version":    1,
+                "text":       initialText,
+            },
+        }
 
-		if err := l.sendMessage(LSPRequest{
-			JsonRPC: "2.0",
-			Method:  "textDocument/didOpen",
-			Params:  didOpenParams,
-		}); err != nil {
-			return fmt.Errorf("failed to open document: %v", err)
-		}
+        if err := l.sendMessage(LSPRequest{
+            JsonRPC: "2.0",
+            Method:  "textDocument/didOpen",
+            Params:  didOpenParams,
+        }); err != nil {
+            return fmt.Errorf("failed to open document: %v", err)
+        }
 
-		l.didOpenSent = true
+        l.didOpenSent = true
 
-		// Give gopls time to process the open
-		time.Sleep(100 * time.Millisecond)
-	}
+        // Give gopls time to process the open
+        time.Sleep(100 * time.Millisecond)
+    }
 
 	return nil
 }

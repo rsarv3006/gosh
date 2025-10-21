@@ -23,11 +23,11 @@ const (
 
 // CompletionContext represents the context for completion
 type CompletionContext struct {
-	Type    ContextType
-	Scope   string // Package name for selectors, etc.
-	Prefix  string
-	Line    string
-	Pos     int
+	Type   ContextType
+	Scope  string // Package name for selectors, etc.
+	Prefix string
+	Line   string
+	Pos    int
 }
 
 // ContextAnalyzer analyzes code to determine completion context
@@ -43,12 +43,19 @@ func (c *ContextAnalyzer) IsGoContext(line string, pos int) bool {
 	if len(line) == 0 {
 		return false
 	}
-
 	linePrefix := strings.TrimSpace(line[:pos])
 	if linePrefix == "" {
 		return false
 	}
-	
+
+	// Check for shell path patterns FIRST (before other checks)
+	if strings.HasPrefix(linePrefix, "./") ||
+		strings.HasPrefix(linePrefix, "../") ||
+		strings.HasPrefix(linePrefix, "/") ||
+		strings.HasPrefix(linePrefix, "~/") {
+		return false
+	}
+
 	// If it's obviously a shell command (first word is a known command)
 	words := strings.Fields(linePrefix)
 	if len(words) > 0 {
@@ -67,24 +74,39 @@ func (c *ContextAnalyzer) IsGoContext(line string, pos int) bool {
 		"if ", "for ", "switch ", "select ",
 		"return ", "go ", "defer ",
 		"{", "}", "(", ")", ";",
-		".", // Package selector
 		":=", // Short variable declaration
 		"==", "!=", "<", ">", "<=", ">=",
 	}
-
 	for _, pattern := range goPatterns {
 		if strings.Contains(linePrefix, pattern) {
 			return true
 		}
 	}
 
+	// Check for Go package selector (but not shell paths)
+	// Only consider it a package selector if preceded by alphanumeric
+	if strings.Contains(linePrefix, ".") {
+		for i, ch := range linePrefix {
+			if ch == '.' && i > 0 {
+				prevChar := linePrefix[i-1]
+				// It's a package selector if previous char is alphanumeric or )
+				if (prevChar >= 'a' && prevChar <= 'z') ||
+					(prevChar >= 'A' && prevChar <= 'Z') ||
+					(prevChar >= '0' && prevChar <= '9') ||
+					prevChar == ')' || prevChar == ']' {
+					return true
+				}
+			}
+		}
+	}
+
 	// Check for Go types or patterns
-	if strings.Contains(linePrefix, "string") || 
-	   strings.Contains(linePrefix, "int") || 
-	   strings.Contains(linePrefix, "bool") ||
-	   strings.Contains(linePrefix, "[]") ||
-	   strings.Contains(linePrefix, "map[") ||
-	   strings.Contains(linePrefix, "chan ") {
+	if strings.Contains(linePrefix, "string") ||
+		strings.Contains(linePrefix, "int") ||
+		strings.Contains(linePrefix, "bool") ||
+		strings.Contains(linePrefix, "[]") ||
+		strings.Contains(linePrefix, "map[") ||
+		strings.Contains(linePrefix, "chan ") {
 		return true
 	}
 
@@ -98,8 +120,8 @@ func (c *ContextAnalyzer) IsGoContext(line string, pos int) bool {
 		// Check if it looks like Go variable assignment
 		// This is a heuristic - if it has camelCase or underscores, probably Go
 		for _, word := range words {
-			if strings.Contains(word, "_") || 
-			   (len(word) > 1 && word[0] >= 'a' && word[0] <= 'z' && word[0] != 'a' && word[0] != 'e' && word[0] != 'i' && word[0] != 'o' && word[0] != 'u') {
+			if strings.Contains(word, "_") ||
+				(len(word) > 1 && word[0] >= 'a' && word[0] <= 'z') {
 				return true
 			}
 		}
@@ -124,7 +146,7 @@ func (c *ContextAnalyzer) AnalyzeContext(line string, pos int) CompletionContext
 	}
 
 	linePrefix := line[:pos]
-	
+
 	// Check for import context
 	if c.isImportContext(linePrefix) {
 		return CompletionContext{
@@ -210,9 +232,9 @@ func (c *ContextAnalyzer) extractPartialWord(linePrefix string) string {
 
 // isImportContext checks if we're in an import statement
 func (c *ContextAnalyzer) isImportContext(linePrefix string) bool {
-	return strings.Contains(linePrefix, "import ") && 
-		   !strings.Contains(linePrefix, "\"") &&
-		   !strings.Contains(linePrefix, ")")
+	return strings.Contains(linePrefix, "import ") &&
+		!strings.Contains(linePrefix, "\"") &&
+		!strings.Contains(linePrefix, ")")
 }
 
 // getSelectorScope extracts the package name from a selector expression
@@ -225,7 +247,7 @@ func (c *ContextAnalyzer) getSelectorScope(linePrefix string) string {
 	// Check if there's a valid identifier before the dot
 	scopeStart := lastDot - 1
 	scopeEnd := lastDot - 1
-	
+
 	// Find the start of the scope identifier
 	for scopeStart >= 0 {
 		r := rune(linePrefix[scopeStart])
@@ -256,7 +278,7 @@ func (c *ContextAnalyzer) isValidIdentifier(s string) bool {
 	if len(s) == 0 {
 		return false
 	}
-	
+
 	for i, r := range s {
 		if i == 0 {
 			if !unicode.IsLetter(r) && r != '_' {
@@ -268,34 +290,34 @@ func (c *ContextAnalyzer) isValidIdentifier(s string) bool {
 			}
 		}
 	}
-	
+
 	return true
 }
 
 // isFunctionCallContext checks if we're in a function call
 func (c *ContextAnalyzer) isFunctionCallContext(linePrefix string) bool {
 	return strings.HasSuffix(linePrefix, "(") ||
-		   strings.HasSuffix(linePrefix, ", ")
+		strings.HasSuffix(linePrefix, ", ")
 }
 
 // isVariableDeclarationContext checks if we're declaring variables
 func (c *ContextAnalyzer) isVariableDeclarationContext(linePrefix string) bool {
 	return strings.Contains(linePrefix, ":=") ||
-		   strings.Contains(linePrefix, "var ") ||
-		   strings.Contains(linePrefix, "const ")
+		strings.Contains(linePrefix, "var ") ||
+		strings.Contains(linePrefix, "const ")
 }
 
 // isTypeDeclarationContext checks if we're declaring types
 func (c *ContextAnalyzer) isTypeDeclarationContext(linePrefix string) bool {
-	return strings.Contains(linePrefix, "type ") && 
-		   !strings.Contains(linePrefix, "=") &&
-		   !strings.Contains(linePrefix, "{")
+	return strings.Contains(linePrefix, "type ") &&
+		!strings.Contains(linePrefix, "=") &&
+		!strings.Contains(linePrefix, "{")
 }
 
 // isStructLiteralContext checks if we're in a struct literal
 func (c *ContextAnalyzer) isStructLiteralContext(linePrefix string) bool {
 	return strings.HasSuffix(linePrefix, "{") ||
-		   (strings.HasSuffix(linePrefix, ", ") && c.containsStructLiteralStart(linePrefix))
+		(strings.HasSuffix(linePrefix, ", ") && c.containsStructLiteralStart(linePrefix))
 }
 
 // containsStructLiteralStart checks if the line contains the start of a struct literal
@@ -356,7 +378,7 @@ func (c *ContextAnalyzer) GetSelectorCompletions(scope, partial string) []Comple
 			{Label: "Sprintf", Kind: "function", Detail: "Sprintf formats according to a format specifier and returns the resulting string"},
 			{Label: "Errorf", Kind: "function", Detail: "Errorf formats according to a format specifier and returns the error"},
 		}...)
-		
+
 	case "os":
 		completions = append(completions, []CompletionItem{
 			{Label: "Exit", Kind: "function", Detail: "Exit causes the current program to exit"},
@@ -367,7 +389,7 @@ func (c *ContextAnalyzer) GetSelectorCompletions(scope, partial string) []Comple
 			{Label: "Stdout", Kind: "variable", Detail: "Stdout is standard output"},
 			{Label: "Stderr", Kind: "variable", Detail: "Stderr is standard error"},
 		}...)
-		
+
 	case "strings":
 		completions = append(completions, []CompletionItem{
 			{Label: "Contains", Kind: "function", Detail: "Contains reports whether substr is within s"},
@@ -388,7 +410,7 @@ func (c *ContextAnalyzer) GetSelectorCompletions(scope, partial string) []Comple
 			filtered = append(filtered, item)
 		}
 	}
-	
+
 	return filtered
 }
 
@@ -409,7 +431,7 @@ func (c *ContextAnalyzer) GetVariableCompletions(partial string) []CompletionIte
 			filtered = append(filtered, item)
 		}
 	}
-	
+
 	return filtered
 }
 
@@ -432,7 +454,7 @@ func (c *ContextAnalyzer) GetFunctionCompletions(partial string) []CompletionIte
 			filtered = append(filtered, item)
 		}
 	}
-	
+
 	return filtered
 }
 

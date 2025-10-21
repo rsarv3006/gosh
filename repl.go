@@ -255,7 +255,32 @@ func routeAndExecuteWithRecovery(router *Router, evaluator *GoEvaluator, spawner
 		return evaluator.EvalWithRecovery(input)
 
 	case InputTypeCommand:
-		// Check if command exists
+		// If the command contains a path separator, try to execute it directly.
+		// This covers "./prog", "/usr/bin/prog", "../prog" and "~/prog" cases.
+		if strings.Contains(command, "/") {
+			execPath := command
+			if strings.HasPrefix(execPath, "~/") {
+				if home, err := os.UserHomeDir(); err == nil {
+					execPath = home + execPath[1:] // replace ~ with home dir
+				}
+			}
+
+			if fi, err := os.Stat(execPath); err == nil {
+				// Ensure it's a file and executable
+				if !fi.IsDir() && fi.Mode().Perm()&0111 != 0 {
+					return spawner.ExecuteInteractive(execPath, args)
+				}
+			}
+
+			// Not found or not executable
+			return ExecutionResult{
+				Output:   fmt.Sprintf("gosh: command not found: %s", command),
+				ExitCode: 127,
+				Error:    fmt.Errorf("command not found: %s", command),
+			}
+		}
+
+		// Otherwise, look up the command in PATH as before
 		if _, found := FindInPath(command, state.Environment["PATH"]); !found {
 			return ExecutionResult{
 				Output:   fmt.Sprintf("gosh: command not found: %s", command),

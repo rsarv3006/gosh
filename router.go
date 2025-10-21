@@ -79,6 +79,14 @@ func (r *Router) looksLikeShellCommand(input string) bool {
 
 	command, args := r.parseInput(input)
 
+	// Check for path-based executables (relative or absolute paths)
+	if strings.HasPrefix(command, "./") ||
+		strings.HasPrefix(command, "../") ||
+		strings.HasPrefix(command, "/") ||
+		strings.HasPrefix(command, "~/") {
+		return true // It's a path to an executable, treat as shell command
+	}
+
 	if _, found := FindInPath(command, r.state.Environment["PATH"]); found {
 		return true
 	}
