@@ -14,11 +14,11 @@ import (
 
 // GoshCompleter implements the readline.AutoCompleter interface with intelligent Go capabilities
 type GoshCompleter struct {
-	contextAnalyzer  *ContextAnalyzer
-	symbolExtractor  *SymbolExtractor
-	goEvaluator      *GoEvaluator
-	lspWrapper       *LSPClientWrapper
-	lspEnabled       bool
+	contextAnalyzer *ContextAnalyzer
+	symbolExtractor *SymbolExtractor
+	goEvaluator     *GoEvaluator
+	lspWrapper      *LSPClientWrapper
+	lspEnabled      bool
 }
 
 // NewGoshCompleter creates a new intelligent completer
@@ -26,11 +26,11 @@ func NewGoshCompleter(goEvaluator *GoEvaluator) readline.AutoCompleter {
 	// Try to initialize LSP wrapper with timeout
 	var lspWrapper *LSPClientWrapper
 	lspEnabled := false
-	
+
 	// Start LSP in goroutine to avoid blocking startup
 	lspChan := make(chan *LSPClientWrapper, 1)
 	errChan := make(chan error, 1)
-	
+
 	go func() {
 		if lsp, err := NewLSPClientWrapper(); err == nil {
 			lspChan <- lsp
@@ -38,7 +38,7 @@ func NewGoshCompleter(goEvaluator *GoEvaluator) readline.AutoCompleter {
 			errChan <- err
 		}
 	}()
-	
+
 	// Wait for LSP initialization with timeout
 	select {
 	case lsp := <-lspChan:
@@ -70,9 +70,14 @@ func NewGoshCompleterForTesting(goEvaluator *GoEvaluator) *GoshCompleter {
 		contextAnalyzer: NewContextAnalyzer(),
 		symbolExtractor: NewSymbolExtractor(goEvaluator.interp),
 		goEvaluator:     goEvaluator,
-		lspWrapper:      nil, // No LSP for testing
+		lspWrapper:      nil,   // No LSP for testing
 		lspEnabled:      false, // Disabled for testing
 	}
+}
+
+// GetLSPClient returns the LSP client if available
+func (g *GoshCompleter) GetLSPClient() *LSPClientWrapper {
+	return g.lspWrapper
 }
 
 // Do implements the readline.AutoCompleter interface with intelligent Go completion
@@ -91,11 +96,11 @@ func (g *GoshCompleter) Do(line []rune, pos int) (newLine [][]rune, length int) 
 	prefixWords := strings.Fields(lineStr)
 
 	var matches [][]rune
-	
+
 	// Check if we should use intelligent Go completion
 	isGo := g.contextAnalyzer.IsGoContext(string(line), pos)
 	fmt.Fprintf(os.Stderr, "🔍 [COMPLETER] Line: %q, Pos: %d, IsGo: %v\n", string(line), pos, isGo)
-	
+
 	if isGo {
 		// Use intelligent Go completion
 		fmt.Fprintf(os.Stderr, "✅ [COMPLETER] Using Go completion for %q\n", partial)
@@ -113,7 +118,7 @@ func (g *GoshCompleter) Do(line []rune, pos int) (newLine [][]rune, length int) 
 		cmd := prefixWords[0]
 		matches = g.completeArguments(cmd, partial)
 	}
-	
+
 	// For readline AutoCompleter, we need to return the completions as-is.
 	// The library will handle the replacement logic correctly.
 	return matches, len(partialRunes)
@@ -137,15 +142,15 @@ func (g *GoshCompleter) doGoCompletion(lineStr, partial string, pos int) [][]run
 			fmt.Fprintf(os.Stderr, "ℹ️  [COMPLETER] LSP disabled, using basic completion\n")
 		}
 	}
-	
+
 	// Analyze the context for intelligent completion
 	ctx := g.contextAnalyzer.AnalyzeContext(lineStr, pos)
-	
+
 	// Refresh symbol cache if needed
 	g.symbolExtractor.refreshIfNeeded()
-	
+
 	var suggestions []CompletionItem
-	
+
 	switch ctx.Type {
 	case ContextPackageImport:
 		suggestions = g.contextAnalyzer.GetStandardPackages()
@@ -176,7 +181,7 @@ func (g *GoshCompleter) doGoCompletion(lineStr, partial string, pos int) [][]run
 				Label: "string", Kind: "type", Detail: "String type",
 			})
 			suggestions = append(suggestions, CompletionItem{
-			 Label: "int", Kind: "type", Detail: "Integer type",
+				Label: "int", Kind: "type", Detail: "Integer type",
 			})
 			suggestions = append(suggestions, CompletionItem{
 				Label: "bool", Kind: "type", Detail: "Boolean type",
@@ -188,7 +193,7 @@ func (g *GoshCompleter) doGoCompletion(lineStr, partial string, pos int) [][]run
 		if len(suggestions) == 0 {
 			suggestions = g.contextAnalyzer.GetCompletionSuggestions(ctx)
 		}
-		
+
 		// Add Go keywords for common patterns
 		if strings.HasPrefix("func", partial) {
 			suggestions = append(suggestions, CompletionItem{
@@ -200,7 +205,7 @@ func (g *GoshCompleter) doGoCompletion(lineStr, partial string, pos int) [][]run
 		if strings.HasPrefix("return", partial) {
 			suggestions = append(suggestions, CompletionItem{
 				Label:  "return",
-				Kind:   "keyword", 
+				Kind:   "keyword",
 				Detail: "return keyword",
 			})
 		}
@@ -219,15 +224,15 @@ func (g *GoshCompleter) doGoCompletion(lineStr, partial string, pos int) [][]run
 			})
 		}
 	}
-	
+
 	// Convert suggestions to rune slices for readline - accept gopls results as-is
 	var matches [][]rune
 	fmt.Fprintf(os.Stderr, "💡 [COMPLETER] Got %d suggestions from gopls for partial %q\n", len(suggestions), partial)
-	
+
 	for _, suggestion := range suggestions {
 		// Accept all gopls results - let gopls handle the filtering
 		fmt.Fprintf(os.Stderr, "  ✅ [COMPLETER] Accepting gopls result: %q (kind: %s)\n", suggestion.Label, suggestion.Kind)
-		
+
 		// For prefix matching, calculate suffix
 		var suffix string
 		if strings.HasPrefix(suggestion.Label, partial) {
@@ -238,16 +243,16 @@ func (g *GoshCompleter) doGoCompletion(lineStr, partial string, pos int) [][]run
 		}
 		matches = append(matches, []rune(suffix))
 	}
-	
+
 	fmt.Fprintf(os.Stderr, "📤 [COMPLETER] Returning %d matches to readline\n", len(matches))
-	
+
 	return matches
 }
 
 // doLSPCompletion performs LSP-based completion
 func (g *GoshCompleter) doLSPCompletion(lineStr, partial string, pos int) [][]rune {
 	fmt.Fprintf(os.Stderr, "🚀 [COMPLETER] Trying LSP-based completion for: %q (partial: %q)\n", lineStr, partial)
-	
+
 	// Get completions from gopls
 	lspItems, err := g.lspWrapper.GetCompletions(lineStr, pos)
 	if err != nil {
@@ -259,7 +264,7 @@ func (g *GoshCompleter) doLSPCompletion(lineStr, partial string, pos int) [][]ru
 
 	// Convert to our format
 	suggestions := ConvertLSPCompletions(lspItems)
-	
+
 	// Filter and convert to rune slices for readline
 	var matches [][]rune
 	for _, suggestion := range suggestions {
@@ -269,7 +274,7 @@ func (g *GoshCompleter) doLSPCompletion(lineStr, partial string, pos int) [][]ru
 			fmt.Fprintf(os.Stderr, "  ➡️  [COMPLETER] LSP match: %q -> suffix: %q\n", suggestion.Label, suffix)
 		}
 	}
-	
+
 	fmt.Fprintf(os.Stderr, "📤 [COMPLETER] LSP returning %d matches for partial %q\n", len(matches), partial)
 	return matches
 }
@@ -350,7 +355,7 @@ func (g *GoshCompleter) completeFiles(partial string, dirsOnly bool) [][]rune {
 	var isTildePath bool
 	var homeDir string
 	originalPartialForSuffix := partial
-	
+
 	if strings.HasPrefix(partial, "~") {
 		isTildePath = true
 		homeDir = os.Getenv("HOME")
@@ -407,7 +412,7 @@ func (g *GoshCompleter) completeFiles(partial string, dirsOnly bool) [][]rune {
 					userPath := strings.Replace(dir, homeDir, "~", 1)
 					completedPath = userPath + "/" + completionName
 				} else {
-					completedPath = dir + "/" + completionName	
+					completedPath = dir + "/" + completionName
 				}
 				suffix = completedPath[len(originalPartialForSuffix):]
 			}
@@ -422,7 +427,7 @@ func (g *GoshCompleter) completeFiles(partial string, dirsOnly bool) [][]rune {
 // getCommandsFromPath finds executables in PATH directories that match partial
 func (g *GoshCompleter) getCommandsFromPath(pathEnv, partial string) [][]rune {
 	var matches [][]rune
-	
+
 	// Split PATH by colon
 	pathDirs := strings.Split(pathEnv, ":")
 	seen := make(map[string]bool) // Avoid duplicates
@@ -431,76 +436,76 @@ func (g *GoshCompleter) getCommandsFromPath(pathEnv, partial string) [][]rune {
 		if dir == "" {
 			continue
 		}
-		
+
 		entries, err := os.ReadDir(dir)
 		if err != nil {
 			continue
 		}
-		
+
 		for _, entry := range entries {
 			if entry.IsDir() {
 				continue
 			}
-			
+
 			name := entry.Name()
-			
+
 			// Check if it's executable (Unix check)
 			info, err := entry.Info()
 			if err != nil {
 				continue
 			}
-			
+
 			if info.Mode().Perm()&0111 == 0 { // Not executable
 				continue
 			}
-			
+
 			// Skip if already seen
 			if seen[name] {
 				continue
 			}
 			seen[name] = true
-			
+
 			if strings.HasPrefix(name, partial) {
 				suffix := name[len(partial):]
 				matches = append(matches, []rune(suffix))
 			}
 		}
 	}
-	
+
 	return matches
 }
 
 // getLocalExecutables finds executables in current directory
 func (g *GoshCompleter) getLocalExecutables(partial string) [][]rune {
 	var matches [][]rune
-	
+
 	entries, err := os.ReadDir(".")
 	if err != nil {
 		return matches
 	}
-	
+
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
 		}
-		
+
 		name := entry.Name()
-		
+
 		// Check if it's executable
 		info, err := entry.Info()
 		if err != nil {
 			continue
 		}
-		
+
 		if info.Mode().Perm()&0111 == 0 { // Not executable
 			continue
 		}
-		
+
 		if strings.HasPrefix(name, partial) {
 			suffix := name[len(partial):]
 			matches = append(matches, []rune(suffix))
 		}
 	}
-	
+
 	return matches
 }

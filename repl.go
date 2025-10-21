@@ -16,10 +16,10 @@ import (
 
 func RunREPL(state *ShellState, evaluator *GoEvaluator, spawner *ProcessSpawner, builtins *BuiltinHandler) error {
 	router := NewRouter(builtins, state)
-	
+
 	// Create the intelligent completer to get access for cleanup
 	completer := NewGoshCompleter(evaluator)
-	
+
 	// Ensure cleanup on exit
 	defer func() {
 		if goshCompleter, ok := completer.(*GoshCompleter); ok {
@@ -102,8 +102,14 @@ func RunREPL(state *ShellState, evaluator *GoEvaluator, spawner *ProcessSpawner,
 			}
 		}
 
+		// Get the GoshCompleter instance
+		var goshCompleter *GoshCompleter
+		if gc, ok := completer.(*GoshCompleter); ok {
+			goshCompleter = gc
+		}
+
 		// Route and execute with recovery
-		result := routeAndExecuteWithRecovery(router, evaluator, spawner, builtins, input, state)
+		result := routeAndExecuteWithRecovery(router, evaluator, spawner, builtins, input, state, goshCompleter)
 
 		// Display output with colors
 		if result.Output != "" {
@@ -171,43 +177,43 @@ func isComplete(input string) bool {
 // looksLikePathCompletion checks if the trailing "/" is likely from path completion
 func looksLikePathCompletion(input string) bool {
 	input = strings.TrimSpace(input)
-	
+
 	// If it ends with "/" and looks like a path command, treat it as complete
 	if !strings.HasSuffix(input, "/") {
 		return false
 	}
-	
+
 	// Split into words and check if it looks like a command with path argument
 	words := strings.Fields(input)
 	if len(words) == 0 {
 		return false
 	}
-	
+
 	command := words[0]
 	lastWord := words[len(words)-1]
-	
+
 	// Common commands that take directory paths
 	pathCommands := map[string]bool{
-		"cd": true, "ls": true, "pwd": false, "cat": false, 
+		"cd": true, "ls": true, "pwd": false, "cat": false,
 		"grep": false, "find": true, "mkdir": true, "rmdir": true,
 		"rm": false, "mv": false, "cp": false, "touch": false,
 	}
-	
+
 	// If it's a known path command and the last word ends with "/", it's path completion
 	if pathCommands[command] && strings.HasSuffix(lastWord, "/") {
 		return true
 	}
-	
+
 	// If the last word contains path separators, it's likely a path
 	if strings.Contains(lastWord, "/") || strings.HasPrefix(lastWord, "~") {
 		return true
 	}
-	
+
 	// Heuristic: if there's only one word that ends with "/" and no Go syntax, it's likely a path
 	if len(words) == 1 && !strings.ContainsAny(input, "{}();:=") {
 		return true
 	}
-	
+
 	return false
 }
 
@@ -223,7 +229,7 @@ func setupReadlineWithFallback(completer readline.AutoCompleter) (*readline.Inst
 }
 
 // routeAndExecuteWithRecovery adds panic recovery for safe execution
-func routeAndExecuteWithRecovery(router *Router, evaluator *GoEvaluator, spawner *ProcessSpawner, builtins *BuiltinHandler, input string, state *ShellState) ExecutionResult {
+func routeAndExecuteWithRecovery(router *Router, evaluator *GoEvaluator, spawner *ProcessSpawner, builtins *BuiltinHandler, input string, state *ShellState, completer *GoshCompleter) ExecutionResult {
 	// Recover from panics during execution
 	defer func() {
 		if r := recover(); r != nil {
@@ -239,6 +245,12 @@ func routeAndExecuteWithRecovery(router *Router, evaluator *GoEvaluator, spawner
 		return builtins.Execute(command, args)
 
 	case InputTypeGo:
+		// Add to LSP session history for better completions
+		if completer != nil {
+			if lspClient := completer.GetLSPClient(); lspClient != nil && lspClient.IsReady() {
+				lspClient.AddToSessionHistory(input)
+			}
+		}
 		// Add recovery for yaegi crashes
 		return evaluator.EvalWithRecovery(input)
 

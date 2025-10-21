@@ -32,6 +32,12 @@ type LSPClientWrapper struct {
 	mu      sync.RWMutex
 	msgID   int
 	pending map[int]chan *LSPResponse
+	// Session history to maintain context
+	sessionHistory []string
+	// Virtual file path for the session
+	virtualFile string
+	// Track if we've sent didOpen already
+	didOpenSent bool
 }
 
 // LSPRequest represents a JSON-RPC request
@@ -100,13 +106,24 @@ func NewLSPClientWrapper() (*LSPClientWrapper, error) {
 		return nil, fmt.Errorf("failed to create stderr pipe: %v", err)
 	}
 
+	// Create temporary directory for session
+	tempDir, err := os.MkdirTemp("", "gosh-session-*")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp dir: %v", err)
+	}
+
+	virtualFile := tempDir + "/session.go"
+
 	wrapper := &LSPClientWrapper{
-		cmd:     cmd,
-		stdin:   stdin,
-		stdout:  stdout,
-		stderr:  stderr,
-		msgID:   1,
-		pending: make(map[int]chan *LSPResponse),
+		cmd:            cmd,
+		stdin:          stdin,
+		stdout:         stdout,
+		stderr:         stderr,
+		msgID:          1,
+		pending:        make(map[int]chan *LSPResponse),
+		sessionHistory: make([]string, 0),
+		virtualFile:    virtualFile,
+		didOpenSent:    false,
 	}
 
 	if err := cmd.Start(); err != nil {
@@ -140,34 +157,24 @@ func (l *LSPClientWrapper) IsReady() bool {
 	return l.ready
 }
 
+// AddToSessionHistory adds a line to the session history
+func (l *LSPClientWrapper) AddToSessionHistory(line string) {
+	l.mu.Lock()
+	l.sessionHistory = append(l.sessionHistory, line)
+	l.mu.Unlock()
+}
+
 // GetCompletions gets completions from gopls for the given line and position
 func (l *LSPClientWrapper) GetCompletions(line string, pos int) ([]LSPCompletionItem, error) {
 	fmt.Fprintf(os.Stderr, "🎯 [LSP] Getting completions for line: %q, pos: %d\n", line, pos)
 
-	// Get current working directory to use as file path
-	wd, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get working directory: %v", err)
-	}
-
-	// Update the existing file
-	tempFile := wd + "/repl_session.go"
-	content := `package main
-
-import "fmt"
-
-func main() {
-` + line + `
-}`
-
-	if err := os.WriteFile(tempFile, []byte(content), 0644); err != nil {
-		return nil, fmt.Errorf("failed to update temp file: %v", err)
-	}
+	// Build the complete file content with the current line added inside session()
+	content := l.buildSessionContentWithCurrentLine(line)
 
 	// Send didChange to update the document
 	didChangeParams := map[string]interface{}{
 		"textDocument": map[string]interface{}{
-			"uri":     "file://" + tempFile,
+			"uri":     "file://" + l.virtualFile,
 			"version": 2,
 		},
 		"contentChanges": []map[string]interface{}{
@@ -188,18 +195,26 @@ func main() {
 	// Give gopls a moment to process
 	time.Sleep(50 * time.Millisecond)
 
-	// Calculate position (in the main function, at the pos position)
-	cursorPos := Position{
-		Line:      5,   // 0-based line number (6th line in file)
-		Character: pos, // Position within that line
+	// Calculate cursor position inside the session() function
+	// Count actual lines in session history (some entries may be multiline)
+	historyLineCount := 0
+	for _, histLine := range l.sessionHistory {
+		historyLineCount += strings.Count(histLine, "\n") + 1
 	}
 
+	// Line count: package (0) + blank (1) + import (2) + blank (3) + history lines + blank + "func session() {" + current line
+	lineNumber := 4 + historyLineCount + 2 // +1 for the line with our completion request
+
+	cursorPos := Position{
+		Line:      lineNumber,
+		Character: pos,
+	}
 	fmt.Fprintf(os.Stderr, "📍 [LSP] Cursor position: line %d, char %d\n", cursorPos.Line, cursorPos.Character)
 
 	// Send completion request
 	params := CompletionParams{
 		TextDocument: TextDocumentIdentifier{
-			URI: "file://" + tempFile,
+			URI: "file://" + l.virtualFile,
 		},
 		Position: cursorPos,
 	}
@@ -210,6 +225,25 @@ func main() {
 	}
 
 	return items, nil
+}
+
+// buildSessionContentWithCurrentLine builds content with the current line inside session()
+func (l *LSPClientWrapper) buildSessionContentWithCurrentLine(currentLine string) string {
+	content := "package main\n\nimport \"fmt\"\n\n"
+
+	// Add all session history at the top level
+	for _, line := range l.sessionHistory {
+		content += line + "\n"
+	}
+
+	// Add session function with the current line inside it
+	content += "\nfunc session() {\n"
+	if currentLine != "" {
+		content += currentLine + "\n"
+	}
+	content += "}\n"
+
+	return content
 }
 
 // call sends a request and waits for the response
@@ -390,20 +424,6 @@ func (l *LSPClientWrapper) initialize() error {
 		return fmt.Errorf("failed to get working directory: %v", err)
 	}
 
-	// Create AND OPEN a valid Go document BEFORE sending initialized
-	tempFile := wd + "/repl_session.go"
-	initialContent := `package main
-
- import "fmt"
-
- func main() {
- 	// REPL context placeholder
- }`
-
-	if err := os.WriteFile(tempFile, []byte(initialContent), 0644); err != nil {
-		return fmt.Errorf("failed to create temp file: %v", err)
-	}
-
 	initParams := map[string]interface{}{
 		"processId": 12345,
 		"rootUri":   "file://" + wd,
@@ -445,43 +465,31 @@ func (l *LSPClientWrapper) initialize() error {
 	// Give gopls time to process the initialized notification
 	time.Sleep(100 * time.Millisecond)
 
-	// NOW send didOpen document
-	didOpenParams := map[string]interface{}{
-		"textDocument": map[string]interface{}{
-			"uri":        "file://" + tempFile,
-			"languageId": "go",
-			"version":    1,
-		},
-	}
+	// Send didOpen document (only once)
+	if !l.didOpenSent {
+		didOpenParams := map[string]interface{}{
+			"textDocument": map[string]interface{}{
+				"uri":        "file://" + l.virtualFile,
+				"languageId": "go",
+				"version":    1,
+			},
+		}
 
-	if err := l.sendMessage(LSPRequest{
-		JsonRPC: "2.0",
-		Method:  "textDocument/didOpen",
-		Params:  didOpenParams,
-	}); err != nil {
-		return fmt.Errorf("failed to open document: %v", err)
-	}
+		if err := l.sendMessage(LSPRequest{
+			JsonRPC: "2.0",
+			Method:  "textDocument/didOpen",
+			Params:  didOpenParams,
+		}); err != nil {
+			return fmt.Errorf("failed to open document: %v", err)
+		}
 
-	// Give gopls time to process the open
-	time.Sleep(100 * time.Millisecond)
+		l.didOpenSent = true
+
+		// Give gopls time to process the open
+		time.Sleep(100 * time.Millisecond)
+	}
 
 	return nil
-}
-
-// updateVirtualFile updates the temporary file with current REPL line
-func (l *LSPClientWrapper) updateVirtualFile(line string) error {
-	tempFile := "/tmp/repl_workspace/session.go"
-
-	// Create realistic Go context for gopls
-	content := `package main
-
-import "fmt"
-
-func session() {
-` + line + `
-}`
-
-	return os.WriteFile(tempFile, []byte(content), 0644)
 }
 
 // Shutdown closes the LSP client
@@ -511,6 +519,9 @@ func (l *LSPClientWrapper) Shutdown() error {
 			fmt.Fprintf(os.Stderr, "Warning: gopls shutdown error: %v\n", err)
 		}
 	}
+
+	// Clean up temporary directory
+	os.RemoveAll(strings.TrimSuffix(l.virtualFile, "/session.go"))
 
 	return nil
 }
