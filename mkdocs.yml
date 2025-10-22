@@ -14,6 +14,7 @@ nav:
   - User Guide: guide.md
   - Config Examples: config.md
   - CLI Reference: reference.md
+  - Session: session.md
 
 theme:
   name: material

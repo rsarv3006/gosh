@@ -340,7 +340,24 @@ func (b *BuiltinHandler) help(args []string) ExecutionResult {
 		}
 	}
 
-	// Check for Go features
+    // Help for session builtin
+    if command == "session" {
+        return ExecutionResult{
+            Output: "session - Open or print the current REPL session file\n\n" +
+                "USAGE:\n" +
+                "    session          # Open session file in $EDITOR or system opener\n" +
+                "    session --print  # Print path to session file\n\n" +
+                "DESCRIPTION:\n" +
+                "    The session command opens a temporary Go file that mirrors the REPL\n" +
+                "    state. Function definitions are placed at package level and other\n" +
+                "    executable statements are placed inside func session(). This file\n" +
+                "    is updated after each executed Go input so editors show the current\n" +
+                "    REPL state.\n",
+            ExitCode: 0, Error: nil,
+        }
+    }
+
+    // Check for Go features
 	if command == "substitution" || command == "command" || command == "go" || command == "golang" || command == "yaegi" {
 		if command == "substitution" || command == "command" {
 			return ExecutionResult{
@@ -409,11 +426,15 @@ func (b *BuiltinHandler) help(args []string) ExecutionResult {
 
 // session prints or opens the LSP session file used by the REPL
 func (b *BuiltinHandler) session(args []string) ExecutionResult {
-    // If user passes --print, only print path
+    // Parse flags: --print/-p and cleanup
     printOnly := false
+    cleanupOnly := false
     for _, a := range args {
         if a == "--print" || a == "-p" {
             printOnly = true
+        }
+        if a == "cleanup" || a == "--cleanup" {
+            cleanupOnly = true
         }
     }
 
@@ -426,6 +447,14 @@ func (b *BuiltinHandler) session(args []string) ExecutionResult {
 
     if printOnly {
         return ExecutionResult{Output: sessionPath, ExitCode: 0, Error: nil}
+    }
+
+    if cleanupOnly {
+        // Perform cleanup of old session/workspace temp dirs. Keep 5 most recent.
+        if err := CleanOldSessionDirs(os.TempDir(), 0, 5); err != nil {
+            return ExecutionResult{Output: fmt.Sprintf("Cleanup failed: %v", err), ExitCode: 1, Error: err}
+        }
+        return ExecutionResult{Output: "Old session directories cleaned (kept 5 most recent)", ExitCode: 0, Error: nil}
     }
 
     // Ensure the session file exists on disk so system openers / editors can open it.

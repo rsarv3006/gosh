@@ -114,6 +114,12 @@ func (p *ProcessSpawner) ExecuteInteractive(command string, args []string) Execu
 - `help` - shows help information
 - Easy to extend with new built-ins
 
+### Session file and LSP integration
+
+gosh maintains an in-memory session history used to power LSP completions. The LSP client writes a temporary "virtual" Go file (e.g. `/tmp/gosh-session-12345/session.go`) which mirrors the REPL state. Function definitions are emitted at package level and other executable statements are placed inside `func session() { ... }` so editors and LSP can provide accurate completions.
+
+To avoid accumulating temporary directories, gosh periodically removes old `gosh-session-*` and `gosh-lsp-workspace-*` directories from the system temp dir, keeping recent sessions and pruning those older than a configurable threshold (default 24 hours).
+
 ### 5. State Management (`state.go`)
 ```go
 type ShellState struct {

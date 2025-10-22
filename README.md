@@ -26,6 +26,8 @@
 - **Signal handling**: Proper Ctrl+C behavior for interrupting processes
 - **macOS & Linux**: Windows users can use PowerShell
 
+ 
+For detailed documentation on the `session` command and how to open your REPL session in an editor, see: docs/session.md
 
 
 ## Quick Start
