@@ -3,9 +3,11 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
+    "fmt"
+    "os"
+    "os/exec"
+    "path/filepath"
+    "strings"
 )
 
 type BuiltinHandler struct {
@@ -18,7 +20,7 @@ func NewBuiltinHandler(state *ShellState) *BuiltinHandler {
 
 func (b *BuiltinHandler) IsBuiltin(command string) bool {
 	switch command {
-	case "cd", "exit", "help", "init":
+    case "cd", "exit", "help", "init", "session":
 		return true
 	default:
 		return false
@@ -35,6 +37,8 @@ func (b *BuiltinHandler) Execute(command string, args []string) ExecutionResult 
 		return b.help(args)
 	case "init":
 		return b.initConfig(args)
+    case "session":
+        return b.session(args)
 	default:
 		return ExecutionResult{
 			Output:   fmt.Sprintf("Unknown builtin: %s", command),
@@ -401,6 +405,79 @@ func (b *BuiltinHandler) help(args []string) ExecutionResult {
 		ExitCode: 1,
 		Error:    fmt.Errorf("no help available"),
 	}
+}
+
+// session prints or opens the LSP session file used by the REPL
+func (b *BuiltinHandler) session(args []string) ExecutionResult {
+    // If user passes --print, only print path
+    printOnly := false
+    for _, a := range args {
+        if a == "--print" || a == "-p" {
+            printOnly = true
+        }
+    }
+
+    sessionPath := b.state.SessionFilePath
+    if sessionPath == "" {
+        // If LSP not initialized, create a fallback temp file path
+        tmpDir := os.TempDir()
+        sessionPath = filepath.Join(tmpDir, "gosh-session.go")
+    }
+
+    if printOnly {
+        return ExecutionResult{Output: sessionPath, ExitCode: 0, Error: nil}
+    }
+
+    // Ensure the session file exists on disk so system openers / editors can open it.
+    // gopls uses a virtual file path inside a temp dir and may never create a physical
+    // file. Creating a minimal session file avoids `open` failing with exit status 1.
+    dir := filepath.Dir(sessionPath)
+    if err := os.MkdirAll(dir, 0700); err != nil {
+        return ExecutionResult{Output: fmt.Sprintf("Failed to create session dir: %v", err), ExitCode: 1, Error: err}
+    }
+    if _, err := os.Stat(sessionPath); os.IsNotExist(err) {
+        initial := "package main\n\nimport \"fmt\"\n\nfunc session() {\n}\n"
+        if err := os.WriteFile(sessionPath, []byte(initial), 0644); err != nil {
+            return ExecutionResult{Output: fmt.Sprintf("Failed to create session file: %v", err), ExitCode: 1, Error: err}
+        }
+    }
+
+    // Try to open with user's EDITOR
+    editor := strings.TrimSpace(b.state.Environment["EDITOR"])
+    if editor != "" {
+        parts := strings.Fields(editor)
+        cmd := exec.Command(parts[0], append(parts[1:], sessionPath)...)
+        cmd.Env = b.state.EnvironmentSlice()
+        cmd.Stdin = os.Stdin
+        cmd.Stdout = os.Stdout
+        cmd.Stderr = os.Stderr
+        if err := cmd.Run(); err != nil {
+            return ExecutionResult{Output: fmt.Sprintf("Failed to open editor %s: %v", editor, err), ExitCode: 1, Error: err}
+        }
+        return ExecutionResult{Output: "", ExitCode: 0, Error: nil}
+    }
+
+    // Fallback: try to use system opener (macOS: open, Linux: xdg-open)
+    if _, err := exec.LookPath("open"); err == nil {
+        cmd := exec.Command("open", sessionPath)
+        cmd.Env = b.state.EnvironmentSlice()
+        if err := cmd.Run(); err != nil {
+            return ExecutionResult{Output: fmt.Sprintf("Failed to open session file with open: %v", err), ExitCode: 1, Error: err}
+        }
+        return ExecutionResult{Output: "", ExitCode: 0, Error: nil}
+    }
+
+    if _, err := exec.LookPath("xdg-open"); err == nil {
+        cmd := exec.Command("xdg-open", sessionPath)
+        cmd.Env = b.state.EnvironmentSlice()
+        if err := cmd.Run(); err != nil {
+            return ExecutionResult{Output: fmt.Sprintf("Failed to open session file with xdg-open: %v", err), ExitCode: 1, Error: err}
+        }
+        return ExecutionResult{Output: "", ExitCode: 0, Error: nil}
+    }
+
+    // As a last resort, just print the path
+    return ExecutionResult{Output: sessionPath, ExitCode: 0, Error: nil}
 }
 
 // initConfig creates the .config/gosh directory with go.mod and template config.go

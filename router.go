@@ -28,9 +28,12 @@ func (r *Router) Route(input string) (InputType, string, []string) {
 		return InputTypeGo, input, nil
 	}
 
-	if r.builtins.IsBuiltin(command) {
-		return InputTypeBuiltin, command, args
-	}
+    // Only treat the first token as a builtin when the input does not look
+    // like Go code. This prevents builtins from shadowing valid Go forms
+    // such as variable declarations (e.g., "session := 1") or assignments.
+    if r.builtins.IsBuiltin(command) && !r.looksLikeGoCode(input) {
+        return InputTypeBuiltin, command, args
+    }
 
 	if r.looksLikeGoCode(input) {
 		return InputTypeGo, input, nil

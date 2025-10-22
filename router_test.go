@@ -85,6 +85,44 @@ func TestRouter_GoKeywordRouting(t *testing.T) {
 	}
 }
 
+// Test that builtin names do not shadow valid Go code (e.g., variable declarations)
+func TestRouter_BuiltinDoesNotShadowGo(t *testing.T) {
+    state := NewShellState()
+    builtins := NewBuiltinHandler(state)
+    router := NewRouter(builtins, state)
+
+    tests := []struct {
+        name     string
+        input    string
+        expected InputType
+    }{
+        {
+            name:     "session builtin alone",
+            input:    "session",
+            expected: InputTypeBuiltin,
+        },
+        {
+            name:     "session short var declaration",
+            input:    "session := 1",
+            expected: InputTypeGo,
+        },
+        {
+            name:     "session assignment",
+            input:    "session = x",
+            expected: InputTypeGo,
+        },
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            inputType, _, _ := router.Route(tt.input)
+            if inputType != tt.expected {
+                t.Errorf("Route(%q) = %v, want %v", tt.input, inputType, tt.expected)
+            }
+        })
+    }
+}
+
 // Test builtins are properly routed
 func TestRouter_BuiltinRouting(t *testing.T) {
 	state := NewShellState()

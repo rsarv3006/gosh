@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+    "path/filepath"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -41,6 +42,29 @@ type LSPClientWrapper struct {
 	virtualFile string
 	// Track if we've sent didOpen already
 	didOpenSent bool
+}
+
+// VirtualFilePath returns the virtual session file path used by the LSP client
+func (l *LSPClientWrapper) VirtualFilePath() string {
+    return l.virtualFile
+}
+
+// WriteSessionFile writes the current session content (based on sessionHistory)
+// to the virtual file path on disk so editors or system openers can show the
+// full session state. This mirrors the virtual content used for LSP requests.
+func (l *LSPClientWrapper) WriteSessionFile() error {
+    content := l.buildSessionContentWithCurrentLine("")
+
+    dir := filepath.Dir(l.virtualFile)
+    if err := os.MkdirAll(dir, 0700); err != nil {
+        return fmt.Errorf("failed to create session dir: %v", err)
+    }
+
+    if err := os.WriteFile(l.virtualFile, []byte(content), 0644); err != nil {
+        return fmt.Errorf("failed to write session file: %v", err)
+    }
+
+    return nil
 }
 
 // LSPRequest represents a JSON-RPC request

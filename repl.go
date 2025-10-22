@@ -20,6 +20,18 @@ func RunREPL(state *ShellState, evaluator *GoEvaluator, spawner *ProcessSpawner,
 	// Create the intelligent completer to get access for cleanup
 	completer := NewGoshCompleter(evaluator)
 
+    // If we have an LSP client, record its virtual session file path in state
+    if gc, ok := completer.(*GoshCompleter); ok {
+        if lsp := gc.GetLSPClient(); lsp != nil {
+            state.SessionFilePath = lsp.VirtualFilePath()
+            // Also write the current session content to disk so opening the
+            // session file reflects the REPL state (functions, previous statements)
+            if err := lsp.WriteSessionFile(); err != nil {
+                debugf("Warning: failed to write session file: %v\n", err)
+            }
+        }
+    }
+
 	// Ensure cleanup on exit
 	defer func() {
 		if goshCompleter, ok := completer.(*GoshCompleter); ok {
@@ -245,10 +257,14 @@ func routeAndExecuteWithRecovery(router *Router, evaluator *GoEvaluator, spawner
 		return builtins.Execute(command, args)
 
 	case InputTypeGo:
-		// Add to LSP session history for better completions
+		// Add to LSP session history for better completions and persist the
+		// virtual session file to disk so editors show the current REPL state.
 		if completer != nil {
-			if lspClient := completer.GetLSPClient(); lspClient != nil && lspClient.IsReady() {
+			if lspClient := completer.GetLSPClient(); lspClient != nil {
 				lspClient.AddToSessionHistory(input)
+				if err := lspClient.WriteSessionFile(); err != nil {
+					debugf("Warning: failed to write session file: %v\n", err)
+				}
 			}
 		}
 		// Add recovery for yaegi crashes
