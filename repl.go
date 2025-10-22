@@ -32,11 +32,11 @@ func RunREPL(state *ShellState, evaluator *GoEvaluator, spawner *ProcessSpawner,
 
 	// Try readline first, fallback to basic mode if it fails
 	rl, useReadline := setupReadlineWithFallback(completer)
-	if useReadline {
+    if useReadline {
 		defer rl.Close()
 	} else {
-		fmt.Fprintln(os.Stderr, "\n🚨 Readline unavailable, using basic mode. Arrow keys and tab completion disabled.")
-		fmt.Fprint(os.Stderr, "Check your terminal (TERM=$TERM) or ~/.inputrc configuration.\n")
+        debugln("\n🚨 Readline unavailable, using basic mode. Arrow keys and tab completion disabled.")
+        debugf("Check your terminal (TERM=%s) or ~/.inputrc configuration.\n", os.Getenv("TERM"))
 	}
 
 	for !state.ShouldExit {
@@ -231,12 +231,12 @@ func setupReadlineWithFallback(completer readline.AutoCompleter) (*readline.Inst
 // routeAndExecuteWithRecovery adds panic recovery for safe execution
 func routeAndExecuteWithRecovery(router *Router, evaluator *GoEvaluator, spawner *ProcessSpawner, builtins *BuiltinHandler, input string, state *ShellState, completer *GoshCompleter) ExecutionResult {
 	// Recover from panics during execution
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Fprintf(os.Stderr, "\n🚨 Panic recovered: %v\n", r)
-			fmt.Fprintln(os.Stderr, "Type 'exit' to quit or continue with a new command.")
-		}
-	}()
+    defer func() {
+        if r := recover(); r != nil {
+            debugf("\n🚨 Panic recovered: %v\n", r)
+            debugln("Type 'exit' to quit or continue with a new command.")
+        }
+    }()
 
 	inputType, command, args := router.Route(input)
 
@@ -296,30 +296,30 @@ func routeAndExecuteWithRecovery(router *Router, evaluator *GoEvaluator, spawner
 }
 
 func setupSignals(state *ShellState) {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Fprintf(os.Stderr, "🚨 Signal handler panic recovered: %v\n", r)
-		}
-	}()
+    defer func() {
+        if r := recover(); r != nil {
+            debugf("🚨 Signal handler panic recovered: %v\n", r)
+        }
+    }()
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				fmt.Fprintf(os.Stderr, "🚨 Signal goroutine panic recovered: %v\n", r)
-			}
-		}()
+        defer func() {
+            if r := recover(); r != nil {
+                debugf("🚨 Signal goroutine panic recovered: %v\n", r)
+            }
+        }()
 
 		for sig := range sigChan {
 			switch sig {
 			case os.Interrupt:
 				// Ctrl+C - interrupt current process or print newline
 				if state.CurrentProcess != nil {
-					if err := state.CurrentProcess.Signal(os.Interrupt); err != nil {
-						fmt.Fprintf(os.Stderr, "Failed to signal process: %v\n", err)
-					}
+                    if err := state.CurrentProcess.Signal(os.Interrupt); err != nil {
+                        debugf("Failed to signal process: %v\n", err)
+                    }
 					fmt.Println("^C")
 				} else {
 					fmt.Println("^C")

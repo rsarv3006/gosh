@@ -296,8 +296,43 @@ func (c *ContextAnalyzer) isValidIdentifier(s string) bool {
 
 // isFunctionCallContext checks if we're in a function call
 func (c *ContextAnalyzer) isFunctionCallContext(linePrefix string) bool {
-	return strings.HasSuffix(linePrefix, "(") ||
-		strings.HasSuffix(linePrefix, ", ")
+    // Fast-path for obvious cases
+    if strings.HasSuffix(linePrefix, "(") || strings.HasSuffix(linePrefix, ", ") {
+        return true
+    }
+
+    // More robust heuristic:
+    // - Find the last '(' before the cursor
+    // - If there is no ')' after that '(', we're inside a parenthesized expression
+    // - Check that the character before '(' looks like a function/identifier or closing
+    //   brace (method call or expression result) to avoid treating grouped expressions
+    //   or tuple-like constructs as function calls.
+    lastOpen := strings.LastIndex(linePrefix, "(")
+    if lastOpen == -1 {
+        return false
+    }
+
+    // If we have a closing ')' after the found '(', then we're not inside an open call
+    if strings.Index(linePrefix[lastOpen:], ")") != -1 {
+        return false
+    }
+
+    // Walk backwards from the '(' skipping spaces to find the preceding meaningful char
+    idx := lastOpen - 1
+    for idx >= 0 && unicode.IsSpace(rune(linePrefix[idx])) {
+        idx--
+    }
+    if idx < 0 {
+        return false
+    }
+
+    ch := rune(linePrefix[idx])
+    // Accept letters/digits/underscore (identifier), or ')' / ']' which indicate an expression
+    if unicode.IsLetter(ch) || unicode.IsDigit(ch) || ch == '_' || ch == ')' || ch == ']' {
+        return true
+    }
+
+    return false
 }
 
 // isVariableDeclarationContext checks if we're declaring variables

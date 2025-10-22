@@ -3,8 +3,7 @@
 package main
 
 import (
-	"fmt"
-	"os"
+    "os"
 	"strings"
 	"time"
 	"unicode"
@@ -39,19 +38,19 @@ func NewGoshCompleter(goEvaluator *GoEvaluator) readline.AutoCompleter {
 		}
 	}()
 
-	// Wait for LSP initialization with timeout
-	select {
-	case lsp := <-lspChan:
-		lspWrapper = lsp
-		lspEnabled = true
-		fmt.Fprintf(os.Stderr, "✨ LSP intellisense enabled!\n")
-	case err := <-errChan:
-		// LSP not available, fall back to basic completion
-		fmt.Fprintf(os.Stderr, "Note: LSP intellisense unavailable (%v). Using basic Go completion.\n", err)
+    // Wait for LSP initialization with timeout
+    select {
+    case lsp := <-lspChan:
+        lspWrapper = lsp
+        lspEnabled = true
+        debugln("✨ LSP intellisense enabled!")
+    case err := <-errChan:
+        // LSP not available, fall back to basic completion
+        debugf("Note: LSP intellisense unavailable (%v). Using basic Go completion.\n", err)
 		lspWrapper = nil
 	case <-time.After(5000 * time.Millisecond):
-		// Timeout, proceed without LSP
-		fmt.Fprintf(os.Stderr, "Note: LSP intellisense starting slowly. Using basic Go completion for now.\n")
+        // Timeout, proceed without LSP
+        debugln("Note: LSP intellisense starting slowly. Using basic Go completion for now.")
 		lspWrapper = nil
 	}
 
@@ -82,13 +81,19 @@ func (g *GoshCompleter) GetLSPClient() *LSPClientWrapper {
 
 // Do implements the readline.AutoCompleter interface with intelligent Go completion
 func (g *GoshCompleter) Do(line []rune, pos int) (newLine [][]rune, length int) {
-	wordStart := pos
-	for wordStart > 0 && wordStart <= len(line) {
-		if unicode.IsSpace(line[wordStart-1]) {
-			break
-		}
-		wordStart--
-	}
+    // Find the start of the current token. Stop at any character that is not a
+    // Go identifier rune (letter, digit, underscore). The previous implementation
+    // only stopped at whitespace which caused the entire expression to be treated
+    // as the partial (e.g., "addNumbers(yee" instead of "yee").
+    wordStart := pos
+    for wordStart > 0 {
+        r := line[wordStart-1]
+        if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' {
+            wordStart--
+            continue
+        }
+        break
+    }
 
 	partialRunes := line[wordStart:pos]
 	partial := string(partialRunes)
@@ -99,11 +104,11 @@ func (g *GoshCompleter) Do(line []rune, pos int) (newLine [][]rune, length int) 
 
 	// Check if we should use intelligent Go completion
 	isGo := g.contextAnalyzer.IsGoContext(string(line), pos)
-	fmt.Fprintf(os.Stderr, "🔍 [COMPLETER] Line: %q, Pos: %d, IsGo: %v\n", string(line), pos, isGo)
+        debugf("🔍 [COMPLETER] Line: %q, Pos: %d, IsGo: %v\n", string(line), pos, isGo)
 
 	if isGo {
-		// Use intelligent Go completion
-		fmt.Fprintf(os.Stderr, "✅ [COMPLETER] Using Go completion for %q\n", partial)
+        // Use intelligent Go completion
+        debugf("✅ [COMPLETER] Using Go completion for %q\n", partial)
 		// Pass the full line, not just the prefix
 		fullLine := string(line)
 		matches = g.doGoCompletion(fullLine, partial, pos)
@@ -126,57 +131,60 @@ func (g *GoshCompleter) Do(line []rune, pos int) (newLine [][]rune, length int) 
 
 // doGoCompletion performs intelligent Go code completion with LSP support
 func (g *GoshCompleter) doGoCompletion(lineStr, partial string, pos int) [][]rune {
-	// Try LSP completion first if available
+    // Determine the actual token being completed (exclude surrounding symbols like '(')
+    tokenPartial := g.contextAnalyzer.extractPartialWord(lineStr[:pos])
+
+    // Try LSP completion first if available
 	if g.lspEnabled && g.lspWrapper.IsReady() {
-		fmt.Fprintf(os.Stderr, "🎯 [COMPLETER] LSP ready, trying LSP completion first\n")
+        debugln("🎯 [COMPLETER] LSP ready, trying LSP completion first")
 		// Only attempt LSP completion if we have valid Go syntax
 		// For now, we'll still try to fallback to basic completion even with syntax issues
-		if lspMatches := g.doLSPCompletion(lineStr, partial, pos); len(lspMatches) > 0 {
-			fmt.Fprintf(os.Stderr, "✅ [COMPLETER] LSP provided %d matches, using those\n", len(lspMatches))
-			return lspMatches
+        if lspMatches := g.doLSPCompletion(lineStr, tokenPartial, pos); len(lspMatches) > 0 {
+            debugf("✅ [COMPLETER] LSP provided %d matches, using those\n", len(lspMatches))
+            return lspMatches
 		}
-		fmt.Fprintf(os.Stderr, "⚠️  [COMPLETER] LSP returned no matches, falling back to basic completion\n")
+        debugln("⚠️  [COMPLETER] LSP returned no matches, falling back to basic completion")
 		// If LSP fails or returns empty, fall back to basic completion
 	} else {
 		if g.lspEnabled {
-			fmt.Fprintf(os.Stderr, "⚠️  [COMPLETER] LSP enabled but not ready, using basic completion\n")
+            debugln("⚠️  [COMPLETER] LSP enabled but not ready, using basic completion")
 		} else {
-			fmt.Fprintf(os.Stderr, "ℹ️  [COMPLETER] LSP disabled, using basic completion\n")
+            debugln("ℹ️  [COMPLETER] LSP disabled, using basic completion")
 		}
 	}
 
 	// Analyze the context for intelligent completion
-	ctx := g.contextAnalyzer.AnalyzeContext(lineStr, pos)
+    ctx := g.contextAnalyzer.AnalyzeContext(lineStr, pos)
 
 	// Refresh symbol cache if needed
 	g.symbolExtractor.refreshIfNeeded()
 
 	var suggestions []CompletionItem
 
-	switch ctx.Type {
+    switch ctx.Type {
 	case ContextPackageImport:
 		suggestions = g.contextAnalyzer.GetStandardPackages()
-	case ContextSelector:
-		// Get selector completions (e.g., "fmt.", "strings.")
-		suggestions = g.contextAnalyzer.GetSelectorCompletions(ctx.Scope, partial)
+    case ContextSelector:
+        // Get selector completions (e.g., "fmt.", "strings.")
+        suggestions = g.contextAnalyzer.GetSelectorCompletions(ctx.Scope, tokenPartial)
 		if len(suggestions) == 0 {
 			// Fallback to symbol extractor for user-defined symbols
-			suggestions = g.symbolExtractor.GetSelectorCompletions(ctx.Scope, partial)
+            suggestions = g.symbolExtractor.GetSelectorCompletions(ctx.Scope, tokenPartial)
 		}
-	case ContextVariableDeclaration:
-		suggestions = g.symbolExtractor.GetVariables(partial)
+    case ContextVariableDeclaration:
+        suggestions = g.symbolExtractor.GetVariables(tokenPartial)
 		if len(suggestions) == 0 {
 			// Fallback to general completions
-			suggestions = g.contextAnalyzer.GetVariableCompletions(partial)
+            suggestions = g.contextAnalyzer.GetVariableCompletions(tokenPartial)
 		}
-	case ContextFunctionCall:
-		suggestions = g.symbolExtractor.GetFunctions(partial)
+    case ContextFunctionCall:
+        suggestions = g.symbolExtractor.GetFunctions(tokenPartial)
 		if len(suggestions) == 0 {
 			// Fallback to general function completions
-			suggestions = g.contextAnalyzer.GetFunctionCompletions(partial)
+            suggestions = g.contextAnalyzer.GetFunctionCompletions(tokenPartial)
 		}
-	case ContextTypeDeclaration:
-		suggestions = g.symbolExtractor.GetTypes(partial)
+    case ContextTypeDeclaration:
+        suggestions = g.symbolExtractor.GetTypes(tokenPartial)
 		if len(suggestions) == 0 {
 			// Add built-in types
 			suggestions = append(suggestions, CompletionItem{
@@ -192,14 +200,14 @@ func (g *GoshCompleter) doGoCompletion(lineStr, partial string, pos int) [][]run
 	default:
 		// General Go completion - only get variables that match partial
 		// but don't add them to all suggestions as they cause conflicts with assignments
-		suggestions = g.symbolExtractor.GetCompletionSuggestions(partial)
+        suggestions = g.symbolExtractor.GetCompletionSuggestions(tokenPartial)
 
 		// Special handling for variable declaration contexts
 		if strings.Contains(lineStr, ":=") {
 			// In variable declaration context like "varName := func()"
 			// Only suggest functions and identifiers that could be used as values
-			funcSuggestions := g.symbolExtractor.GetFunctions(partial)
-			varSuggestions := g.symbolExtractor.GetVariables(partial)
+            funcSuggestions := g.symbolExtractor.GetFunctions(tokenPartial)
+            varSuggestions := g.symbolExtractor.GetVariables(tokenPartial)
 
 			// Merge without duplicates
 			seen := make(map[string]bool)
@@ -222,7 +230,7 @@ func (g *GoshCompleter) doGoCompletion(lineStr, partial string, pos int) [][]run
 			}
 		} else {
 			// For normal expressions, just add variables that match partial
-			variables := g.symbolExtractor.GetVariables(partial)
+            variables := g.symbolExtractor.GetVariables(tokenPartial)
 			for _, v := range variables {
 				if !containsLabel(suggestions, v.Label) {
 					suggestions = append(suggestions, v)
@@ -231,28 +239,28 @@ func (g *GoshCompleter) doGoCompletion(lineStr, partial string, pos int) [][]run
 		}
 
 		// Add Go keywords for common patterns
-		if strings.HasPrefix("func", partial) {
+        if strings.HasPrefix("func", tokenPartial) {
 			suggestions = append(suggestions, CompletionItem{
 				Label:  "func",
 				Kind:   "keyword",
 				Detail: "function keyword",
 			})
 		}
-		if strings.HasPrefix("return", partial) {
+        if strings.HasPrefix("return", tokenPartial) {
 			suggestions = append(suggestions, CompletionItem{
 				Label:  "return",
 				Kind:   "keyword",
 				Detail: "return keyword",
 			})
 		}
-		if strings.HasPrefix("var", partial) {
+        if strings.HasPrefix("var", tokenPartial) {
 			suggestions = append(suggestions, CompletionItem{
 				Label:  "var",
 				Kind:   "keyword",
 				Detail: "variable declaration",
 			})
 		}
-		if strings.HasPrefix("if", partial) {
+        if strings.HasPrefix("if", tokenPartial) {
 			suggestions = append(suggestions, CompletionItem{
 				Label:  "if",
 				Kind:   "keyword",
@@ -263,16 +271,16 @@ func (g *GoshCompleter) doGoCompletion(lineStr, partial string, pos int) [][]run
 
 	// Convert suggestions to rune slices for readline - accept gopls results as-is
 	var matches [][]rune
-	fmt.Fprintf(os.Stderr, "💡 [COMPLETER] Got %d suggestions from gopls for partial %q\n", len(suggestions), partial)
+    debugf("💡 [COMPLETER] Got %d suggestions from gopls for partial %q\n", len(suggestions), tokenPartial)
 
 	for _, suggestion := range suggestions {
 		// Accept all gopls results - let gopls handle the filtering
-		fmt.Fprintf(os.Stderr, "  ✅ [COMPLETER] Accepting gopls result: %q (kind: %s)\n", suggestion.Label, suggestion.Kind)
+        debugf("  ✅ [COMPLETER] Accepting gopls result: %q (kind: %s)\n", suggestion.Label, suggestion.Kind)
 
 		// For prefix matching, calculate suffix
 		var suffix string
-		if strings.HasPrefix(suggestion.Label, partial) {
-			suffix = suggestion.Label[len(partial):]
+        if strings.HasPrefix(suggestion.Label, tokenPartial) {
+            suffix = suggestion.Label[len(tokenPartial):]
 		} else {
 			// For non-prefix matches, replace the entire input
 			suffix = suggestion.Label
@@ -280,7 +288,7 @@ func (g *GoshCompleter) doGoCompletion(lineStr, partial string, pos int) [][]run
 		matches = append(matches, []rune(suffix))
 	}
 
-	fmt.Fprintf(os.Stderr, "📤 [COMPLETER] Returning %d matches to readline\n", len(matches))
+    debugf("📤 [COMPLETER] Returning %d matches to readline\n", len(matches))
 
 	return matches
 }
@@ -296,16 +304,16 @@ func containsLabel(items []CompletionItem, lbl string) bool {
 
 // doLSPCompletion performs LSP-based completion
 func (g *GoshCompleter) doLSPCompletion(lineStr, partial string, pos int) [][]rune {
-	fmt.Fprintf(os.Stderr, "🚀 [COMPLETER] Trying LSP-based completion for: %q (partial: %q)\n", lineStr, partial)
+    debugf("🚀 [COMPLETER] Trying LSP-based completion for: %q (partial: %q)\n", lineStr, partial)
 
 	// Get completions from gopls
 	lspItems, err := g.lspWrapper.GetCompletions(lineStr, pos)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ [COMPLETER] LSP completion failed: %v - falling back to basic completion\n", err)
+    if err != nil {
+        debugf("❌ [COMPLETER] LSP completion failed: %v - falling back to basic completion\n", err)
 		return nil // LSP failed, fall back to basic completion
 	}
 
-	fmt.Fprintf(os.Stderr, "✅ [COMPLETER] LSP returned %d items for %q\n", len(lspItems), partial)
+    debugf("✅ [COMPLETER] LSP returned %d items for %q\n", len(lspItems), partial)
 
 	// Convert to our format
 	suggestions := ConvertLSPCompletions(lspItems)
@@ -316,20 +324,20 @@ func (g *GoshCompleter) doLSPCompletion(lineStr, partial string, pos int) [][]ru
 		if strings.HasPrefix(suggestion.Label, partial) {
 			suffix := suggestion.Label[len(partial):]
 			matches = append(matches, []rune(suffix))
-			fmt.Fprintf(os.Stderr, "  ➡️  [COMPLETER] LSP match: %q -> suffix: %q\n", suggestion.Label, suffix)
+            debugf("  ➡️  [COMPLETER] LSP match: %q -> suffix: %q\n", suggestion.Label, suffix)
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "📤 [COMPLETER] LSP returning %d matches for partial %q\n", len(matches), partial)
+    debugf("📤 [COMPLETER] LSP returning %d matches for partial %q\n", len(matches), partial)
 	return matches
 }
 
 // cleanup shuts down the LSP client if it was initialized
 func (g *GoshCompleter) cleanup() {
 	if g.lspEnabled && g.lspWrapper != nil {
-		if err := g.lspWrapper.Shutdown(); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: Failed to shutdown LSP client: %v\n", err)
-		}
+        if err := g.lspWrapper.Shutdown(); err != nil {
+            debugf("Warning: Failed to shutdown LSP client: %v\n", err)
+        }
 	}
 }
 

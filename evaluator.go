@@ -70,7 +70,7 @@ import (
 	"path/filepath"
 )
 `); err != nil {
-		fmt.Printf("Warning: Failed to preload packages: %v\n", err)
+		debugf("Warning: Failed to preload packages: %v\n", err)
 	}
 
 	
@@ -161,7 +161,7 @@ import (
 	
 	// Inject shellapi functions
 	if err := i.Use(shellapiSymbols); err != nil {
-		fmt.Printf("Failed to inject shellapi symbols: %v\n", err)
+		debugf("Failed to inject shellapi symbols: %v\n", err)
 	}
 
 	
@@ -309,7 +309,7 @@ func ExecShell(name string, args ...string) error {
 	// Extract and store config functions for calling
 	g.extractConfigFunctions()
 
-	fmt.Printf("Loaded %s from %s\n", configType, configPath)
+    debugf("Loaded %s from %s\n", configType, configPath)
 	return nil
 }
 
@@ -568,13 +568,13 @@ func (g *GoEvaluator) Eval(code string) ExecutionResult {
 // EvalWithRecovery provides additional safety against yaegi crashes
 func (g *GoEvaluator) EvalWithRecovery(code string) ExecutionResult {
 	// Add an outer layer of recovery
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Fprintf(os.Stderr, "\n🚨 CRITICAL: yaegi interpreter crashed!\n")
-			fmt.Fprintf(os.Stderr, "🚨 ERROR: Go evaluation may be unstable. Consider restarting.\n")
-			fmt.Fprintf(os.Stderr, "🚨 ERROR: Last command was: %s\n", code[:evaluatorMin(len(code), 50)])
-		}
-	}()
+    defer func() {
+        if r := recover(); r != nil {
+            debugln("\n🚨 CRITICAL: yaegi interpreter crashed!")
+            debugln("🚨 ERROR: Go evaluation may be unstable. Consider restarting.")
+            debugf("🚨 ERROR: Last command was: %s\n", code[:evaluatorMin(len(code), 50)])
+        }
+    }()
 	
 	return g.Eval(code)
 }

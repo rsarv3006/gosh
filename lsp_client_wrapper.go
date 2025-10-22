@@ -1,17 +1,17 @@
 package main
 
 import (
-    "bufio"
-    "encoding/json"
-    "fmt"
-    "io"
-    "os"
-    "os/exec"
-    "strconv"
-    "strings"
-    "sync"
-    "syscall"
-    "time"
+	"bufio"
+	"encoding/json"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"strconv"
+	"strings"
+	"sync"
+	"syscall"
+	"time"
 )
 
 // LSPCompletionItem represents a completion item from LSP
@@ -25,14 +25,14 @@ type LSPCompletionItem struct {
 
 // LSPClientWrapper manages communication with gopls
 type LSPClientWrapper struct {
-	cmd     *exec.Cmd
-	stdin   io.WriteCloser
-	stdout  io.ReadCloser
-	stderr  io.ReadCloser
-	ready   bool
-    mu      sync.RWMutex
-    // serialize writes to stdin to avoid interleaving headers/content
-    writeMu sync.Mutex
+	cmd    *exec.Cmd
+	stdin  io.WriteCloser
+	stdout io.ReadCloser
+	stderr io.ReadCloser
+	ready  bool
+	mu     sync.RWMutex
+	// serialize writes to stdin to avoid interleaving headers/content
+	writeMu sync.Mutex
 	msgID   int
 	pending map[int]chan *LSPResponse
 	// Session history to maintain context
@@ -90,12 +90,12 @@ type CompletionList struct {
 
 // NewLSPClientWrapper creates a new LSP client wrapper
 func NewLSPClientWrapper() (*LSPClientWrapper, error) {
-	fmt.Fprintf(os.Stderr, "🚀 [LSP] Starting gopls...\n")
+	debugln("🚀 [LSP] Starting gopls...")
 
-    cmd := exec.Command("gopls", "serve")
-    // Run gopls in its own process group so terminal signals (Ctrl-C) sent to
-    // foreground child processes do not get delivered to gopls and kill it.
-    cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd := exec.Command("gopls", "serve")
+	// Run gopls in its own process group so terminal signals (Ctrl-C) sent to
+	// foreground child processes do not get delivered to gopls and kill it.
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -152,7 +152,7 @@ func NewLSPClientWrapper() (*LSPClientWrapper, error) {
 	wrapper.ready = true
 	wrapper.mu.Unlock()
 
-	fmt.Fprintf(os.Stderr, "✅ [LSP] gopls initialized successfully\n")
+	debugln("✅ [LSP] gopls initialized successfully")
 	return wrapper, nil
 }
 
@@ -172,7 +172,7 @@ func (l *LSPClientWrapper) AddToSessionHistory(line string) {
 
 // GetCompletions gets completions from gopls for the given line and position
 func (l *LSPClientWrapper) GetCompletions(line string, pos int) ([]LSPCompletionItem, error) {
-	fmt.Fprintf(os.Stderr, "🎯 [LSP] Getting completions for line: %q, pos: %d\n", line, pos)
+	debugf("🎯 [LSP] Getting completions for line: %q, pos: %d\n", line, pos)
 
 	// Build the complete file content with the current line added inside session()
 	content := l.buildSessionContentWithCurrentLine(line)
@@ -195,7 +195,7 @@ func (l *LSPClientWrapper) GetCompletions(line string, pos int) ([]LSPCompletion
 		Method:  "textDocument/didChange",
 		Params:  didChangeParams,
 	}); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: failed to send changes: %v\n", err)
+		debugf("Warning: failed to send changes: %v\n", err)
 	}
 
 	// Give gopls a moment to process
@@ -215,7 +215,7 @@ func (l *LSPClientWrapper) GetCompletions(line string, pos int) ([]LSPCompletion
 		Line:      lineNumber,
 		Character: pos,
 	}
-	fmt.Fprintf(os.Stderr, "📍 [LSP] Cursor position: line %d, char %d\n", cursorPos.Line, cursorPos.Character)
+	debugf("📍 [LSP] Cursor position: line %d, char %d\n", cursorPos.Line, cursorPos.Character)
 
 	// Send completion request
 	params := CompletionParams{
@@ -306,12 +306,12 @@ func (l *LSPClientWrapper) call(method string, params interface{}) ([]LSPComplet
 		return nil, fmt.Errorf("failed to send request: %v", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "📤 [LSP] Sent request %d: %s\n", id, method)
+	debugf("📤 [LSP] Sent request %d: %s\n", id, method)
 
 	// Wait for response with timeout
 	select {
 	case response := <-responseChan:
-		fmt.Fprintf(os.Stderr, "📥 [LSP] Received response %d\n", id)
+		debugf("📥 [LSP] Received response %d\n", id)
 		if response.Error != nil {
 			return nil, fmt.Errorf("LSP error: %s", response.Error.Message)
 		}
@@ -327,7 +327,7 @@ func (l *LSPClientWrapper) call(method string, params interface{}) ([]LSPComplet
 			return nil, fmt.Errorf("failed to unmarshal completion list: %v", err)
 		}
 
-		fmt.Fprintf(os.Stderr, "✅ [LSP] Parsed %d completion items\n", len(completionList.Items))
+		debugf("✅ [LSP] Parsed %d completion items\n", len(completionList.Items))
 		return completionList.Items, nil
 
 	case <-time.After(5 * time.Second):
@@ -342,23 +342,23 @@ func (l *LSPClientWrapper) sendMessage(request LSPRequest) error {
 		return err
 	}
 
-    // Serialize writes to avoid interleaving headers/content from concurrent callers.
-    l.writeMu.Lock()
-    defer l.writeMu.Unlock()
+	// Serialize writes to avoid interleaving headers/content from concurrent callers.
+	l.writeMu.Lock()
+	defer l.writeMu.Unlock()
 
-    // Send Content-Length header
-    header := fmt.Sprintf("Content-Length: %d\r\n\r\n", len(data))
-    if _, err := io.WriteString(l.stdin, header); err != nil {
-        return err
-    }
+	// Send Content-Length header
+	header := fmt.Sprintf("Content-Length: %d\r\n\r\n", len(data))
+	if _, err := io.WriteString(l.stdin, header); err != nil {
+		return err
+	}
 
-    // Send message content
-    if _, err := l.stdin.Write(data); err != nil {
-        return err
-    }
+	// Send message content
+	if _, err := l.stdin.Write(data); err != nil {
+		return err
+	}
 
-    fmt.Fprintf(os.Stderr, "📨 [LSP] Sent message: %s\n", string(data))
-    return nil
+	debugf("📨 [LSP] Sent message: %s\n", string(data))
+	return nil
 }
 
 // readMessages reads responses from gopls in a goroutine
@@ -370,7 +370,7 @@ func (l *LSPClientWrapper) readMessages() {
 		line, err := reader.ReadString('\n')
 		if err != nil {
 			if err != io.EOF {
-				fmt.Fprintf(os.Stderr, "❌ [LSP] Error reading header: %v\n", err)
+				debugf("❌ [LSP] Error reading header: %v\n", err)
 			}
 			break
 		}
@@ -380,13 +380,13 @@ func (l *LSPClientWrapper) readMessages() {
 			lengthStr := strings.TrimSpace(strings.TrimPrefix(line, "Content-Length:"))
 			length, err := strconv.Atoi(lengthStr)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "❌ [LSP] Invalid content length: %v\n", err)
+				debugf("❌ [LSP] Invalid content length: %v\n", err)
 				continue
 			}
 
 			// Read the blank line
 			if _, err := reader.ReadString('\n'); err != nil {
-				fmt.Fprintf(os.Stderr, "❌ [LSP] Error reading blank line: %v\n", err)
+				debugf("❌ [LSP] Error reading blank line: %v\n", err)
 				continue
 			}
 
@@ -396,7 +396,7 @@ func (l *LSPClientWrapper) readMessages() {
 			for bytesRead < length {
 				n, err := reader.Read(content[bytesRead:])
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "❌ [LSP] Error reading content: %v\n", err)
+					debugf("❌ [LSP] Error reading content: %v\n", err)
 					break
 				}
 				bytesRead += n
@@ -411,19 +411,19 @@ func (l *LSPClientWrapper) readMessages() {
 
 // handleResponse processes an incoming response
 func (l *LSPClientWrapper) handleResponse(data []byte) {
-	fmt.Fprintf(os.Stderr, "🟢 [LSP] Received response: %s\n", string(data))
+	debugf("🟢 [LSP] Received response: %s\n", string(data))
 
 	// Try to parse as a response first
 	var response LSPResponse
 	if err := json.Unmarshal(data, &response); err != nil {
-		fmt.Fprintf(os.Stderr, "❌ [LSP] Failed to parse response: %v\n", err)
+		debugf("❌ [LSP] Failed to parse response: %v\n", err)
 		return
 	}
 
 	// Check if this is a notification (no ID) or a response (has ID)
 	if response.ID == 0 {
 		// This is a notification (like window/showMessage), ignore it for now
-		fmt.Fprintf(os.Stderr, "🔔 [LSP] Ignoring notification (ID=0)\n")
+		debugln("🔔 [LSP] Ignoring notification (ID=0)")
 		return
 	}
 
@@ -436,13 +436,13 @@ func (l *LSPClientWrapper) handleResponse(data []byte) {
 		// Send response to the waiting goroutine
 		select {
 		case responseChan <- &response:
-			fmt.Fprintf(os.Stderr, "✅ [LSP] Delivered response %d to caller\n", response.ID)
+			debugf("✅ [LSP] Delivered response %d to caller\n", response.ID)
 		default:
-			fmt.Fprintf(os.Stderr, "❌ [LSP] Response channel blocked for ID %d\n", response.ID)
+			debugf("❌ [LSP] Response channel blocked for ID %d\n", response.ID)
 		}
 	} else {
 		l.mu.Unlock()
-		fmt.Fprintf(os.Stderr, "🔍 [LSP] No waiting channel for response ID %d\n", response.ID)
+		debugf("🔍 [LSP] No waiting channel for response ID %d\n", response.ID)
 	}
 }
 
@@ -450,7 +450,7 @@ func (l *LSPClientWrapper) handleResponse(data []byte) {
 func (l *LSPClientWrapper) readStderr() {
 	scanner := bufio.NewScanner(l.stderr)
 	for scanner.Scan() {
-		fmt.Fprintf(os.Stderr, "🚨 [LSP] STDERR: %s\n", scanner.Text())
+		debugf("🚨 [LSP] STDERR: %s\n", scanner.Text())
 	}
 }
 
@@ -462,9 +462,9 @@ func (l *LSPClientWrapper) initialize() error {
 		return fmt.Errorf("failed to get working directory: %v", err)
 	}
 
-    initParams := map[string]interface{}{
-        "processId": os.Getpid(),
-        "rootUri":   "file://" + wd,
+	initParams := map[string]interface{}{
+		"processId": os.Getpid(),
+		"rootUri":   "file://" + wd,
 		"workspaceFolders": []map[string]interface{}{
 			{
 				"uri":  "file://" + wd,
@@ -487,7 +487,7 @@ func (l *LSPClientWrapper) initialize() error {
 		return fmt.Errorf("initialize failed: %v", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "✅ [LSP] Initialize response: %+v\n", response)
+	debugf("✅ [LSP] Initialize response: %+v\n", response)
 
 	// Send initialized notification BEFORE sending didOpen
 	notif := LSPRequest{
@@ -503,31 +503,31 @@ func (l *LSPClientWrapper) initialize() error {
 	// Give gopls time to process the initialized notification
 	time.Sleep(100 * time.Millisecond)
 
-    // Send didOpen document (only once) and include the initial text
-    if !l.didOpenSent {
-        initialText := l.buildSessionContentWithCurrentLine("")
-        didOpenParams := map[string]interface{}{
-            "textDocument": map[string]interface{}{
-                "uri":        "file://" + l.virtualFile,
-                "languageId": "go",
-                "version":    1,
-                "text":       initialText,
-            },
-        }
+	// Send didOpen document (only once) and include the initial text
+	if !l.didOpenSent {
+		initialText := l.buildSessionContentWithCurrentLine("")
+		didOpenParams := map[string]interface{}{
+			"textDocument": map[string]interface{}{
+				"uri":        "file://" + l.virtualFile,
+				"languageId": "go",
+				"version":    1,
+				"text":       initialText,
+			},
+		}
 
-        if err := l.sendMessage(LSPRequest{
-            JsonRPC: "2.0",
-            Method:  "textDocument/didOpen",
-            Params:  didOpenParams,
-        }); err != nil {
-            return fmt.Errorf("failed to open document: %v", err)
-        }
+		if err := l.sendMessage(LSPRequest{
+			JsonRPC: "2.0",
+			Method:  "textDocument/didOpen",
+			Params:  didOpenParams,
+		}); err != nil {
+			return fmt.Errorf("failed to open document: %v", err)
+		}
 
-        l.didOpenSent = true
+		l.didOpenSent = true
 
-        // Give gopls time to process the open
-        time.Sleep(100 * time.Millisecond)
-    }
+		// Give gopls time to process the open
+		time.Sleep(100 * time.Millisecond)
+	}
 
 	return nil
 }
@@ -545,7 +545,7 @@ func (l *LSPClientWrapper) Shutdown() error {
 			ID:      l.msgID,
 			Method:  "shutdown",
 		}); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to send shutdown: %v\n", err)
+			debugf("Warning: failed to send shutdown: %v\n", err)
 		}
 
 		// Send exit notification
@@ -556,7 +556,7 @@ func (l *LSPClientWrapper) Shutdown() error {
 
 		// Wait for process to exit
 		if err := l.cmd.Wait(); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: gopls shutdown error: %v\n", err)
+			debugf("Warning: gopls shutdown error: %v\n", err)
 		}
 	}
 

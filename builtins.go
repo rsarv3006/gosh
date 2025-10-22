@@ -436,16 +436,16 @@ go 1.21
 // Import gosh_lib for rich shell functions  
 require github.com/rsarv3006/gosh_lib v0.2.0
 `
-		if err := os.WriteFile(goModPath, []byte(goModContent), 0644); err != nil {
+        if err := os.WriteFile(goModPath, []byte(goModContent), 0644); err != nil {
 			return ExecutionResult{
 				Output:   fmt.Sprintf("Failed to create go.mod: %v", err),
 				ExitCode: 1,
 				Error:    err,
 			}
 		}
-		fmt.Printf("Created %s\n", goModPath)
+        debugf("Created %s\n", goModPath)
 	} else {
-		fmt.Printf("go.mod already exists at %s\n", goModPath)
+        debugf("go.mod already exists at %s\n", goModPath)
 	}
 
 	// Create config.go if it doesn't exist
@@ -553,21 +553,21 @@ func err(msg string) string {
 	return shellapi.Error(msg)  // Red colored text
 }
 `
-		if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+        if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
 			return ExecutionResult{
 				Output:   fmt.Sprintf("Failed to create config.go: %v", err),
 				ExitCode: 1,
 				Error:    err,
 			}
 		}
-		fmt.Printf("Created %s\n", configPath)
+        debugf("Created %s\n", configPath)
 	} else {
-		fmt.Printf("config.go already exists at %s\n", configPath)
+        debugf("config.go already exists at %s\n", configPath)
 	}
 
 	// Note: Skip go mod tidy for now since v0.1.0 checksum isn't published yet
-	fmt.Println("📝 Config files created successfully!")
-	fmt.Println("💡 Run 'cd ~/.config/gosh && go mod tidy' manually if needed")
+    debugln("📝 Config files created successfully!")
+    debugln("💡 Run 'cd ~/.config/gosh && go mod tidy' manually if needed")
 	return ExecutionResult{
 		Output:   fmt.Sprintf("✅ gosh config directory initialized at %s", configDir),
 		ExitCode: 0,
