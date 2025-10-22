@@ -1,19 +1,19 @@
 package main
 
 import (
-    "bufio"
-    "encoding/json"
-    "fmt"
-    "io"
-    "os"
-    "path/filepath"
-    "os/exec"
-    "sort"
-    "strconv"
-    "strings"
-    "sync"
-    "syscall"
-    "time"
+	"bufio"
+	"encoding/json"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
+	"sync"
+	"syscall"
+	"time"
 )
 
 // LSPCompletionItem represents a completion item from LSP
@@ -47,25 +47,25 @@ type LSPClientWrapper struct {
 
 // VirtualFilePath returns the virtual session file path used by the LSP client
 func (l *LSPClientWrapper) VirtualFilePath() string {
-    return l.virtualFile
+	return l.virtualFile
 }
 
 // WriteSessionFile writes the current session content (based on sessionHistory)
 // to the virtual file path on disk so editors or system openers can show the
 // full session state. This mirrors the virtual content used for LSP requests.
 func (l *LSPClientWrapper) WriteSessionFile() error {
-    content := l.buildSessionContentWithCurrentLine("")
+	content := l.buildSessionContentWithCurrentLine("")
 
-    dir := filepath.Dir(l.virtualFile)
-    if err := os.MkdirAll(dir, 0700); err != nil {
-        return fmt.Errorf("failed to create session dir: %v", err)
-    }
+	dir := filepath.Dir(l.virtualFile)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return fmt.Errorf("failed to create session dir: %v", err)
+	}
 
-    if err := os.WriteFile(l.virtualFile, []byte(content), 0644); err != nil {
-        return fmt.Errorf("failed to write session file: %v", err)
-    }
+	if err := os.WriteFile(l.virtualFile, []byte(content), 0644); err != nil {
+		return fmt.Errorf("failed to write session file: %v", err)
+	}
 
-    return nil
+	return nil
 }
 
 // LSPRequest represents a JSON-RPC request
@@ -117,14 +117,14 @@ type CompletionList struct {
 func NewLSPClientWrapper() (*LSPClientWrapper, error) {
 	debugln("🚀 [LSP] Starting gopls...")
 
-    // Clean up old session/temp directories on startup to avoid accumulating
-    // stale gosh-session-* and gosh-lsp-workspace-* directories in the system temp dir.
-    // Keep the most recent few and remove entries older than 24 hours.
-    go func() {
-        if err := CleanOldSessionDirs(os.TempDir(), 24*time.Hour, 5); err != nil {
-            debugf("Warning: failed to clean old session dirs: %v\n", err)
-        }
-    }()
+	// Clean up old session/temp directories on startup to avoid accumulating
+	// stale gosh-session-* and gosh-lsp-workspace-* directories in the system temp dir.
+	// Keep the most recent few and remove entries older than 24 hours.
+	go func() {
+		if err := CleanOldSessionDirs(os.TempDir(), 24*time.Hour, 5); err != nil {
+			debugf("Warning: failed to clean old session dirs: %v\n", err)
+		}
+	}()
 
 	cmd := exec.Command("gopls", "serve")
 	// Run gopls in its own process group so terminal signals (Ctrl-C) sent to
@@ -613,57 +613,57 @@ func ConvertLSPCompletions(lspItems []LSPCompletionItem) []CompletionItem {
 		suggestions = append(suggestions, suggestion)
 	}
 
-    return suggestions
+	return suggestions
 }
 
 // CleanOldSessionDirs removes old gosh-session-* and gosh-lsp-workspace-* directories
 // in the provided tempDir that are older than maxAge. It keeps up to keepCount
 // most recent directories.
 func CleanOldSessionDirs(tempDir string, maxAge time.Duration, keepCount int) error {
-    entries, err := os.ReadDir(tempDir)
-    if err != nil {
-        return err
-    }
+	entries, err := os.ReadDir(tempDir)
+	if err != nil {
+		return err
+	}
 
-    type entryInfo struct {
-        name string
-        mod  time.Time
-        path string
-    }
+	type entryInfo struct {
+		name string
+		mod  time.Time
+		path string
+	}
 
-    var candidates []entryInfo
-    for _, e := range entries {
-        if !e.IsDir() {
-            continue
-        }
-        n := e.Name()
-        if strings.HasPrefix(n, "gosh-session-") || strings.HasPrefix(n, "gosh-lsp-workspace-") {
-            info, err := e.Info()
-            if err != nil {
-                continue
-            }
-            candidates = append(candidates, entryInfo{name: n, mod: info.ModTime(), path: filepath.Join(tempDir, n)})
-        }
-    }
+	var candidates []entryInfo
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		n := e.Name()
+		if strings.HasPrefix(n, "gosh-session-") || strings.HasPrefix(n, "gosh-lsp-workspace-") {
+			info, err := e.Info()
+			if err != nil {
+				continue
+			}
+			candidates = append(candidates, entryInfo{name: n, mod: info.ModTime(), path: filepath.Join(tempDir, n)})
+		}
+	}
 
-    if len(candidates) <= keepCount {
-        return nil
-    }
+	if len(candidates) <= keepCount {
+		return nil
+	}
 
-    // Sort by mod time descending
-    sort.Slice(candidates, func(i, j int) bool {
-        return candidates[i].mod.After(candidates[j].mod)
-    })
+	// Sort by mod time descending
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].mod.After(candidates[j].mod)
+	})
 
-    // Determine which to remove (beyond keepCount and older than maxAge)
-    now := time.Now()
-    for idx := keepCount; idx < len(candidates); idx++ {
-        c := candidates[idx]
-        if now.Sub(c.mod) > maxAge {
-            os.RemoveAll(c.path)
-            debugf("Removed old session dir: %s\n", c.path)
-        }
-    }
+	// Determine which to remove (beyond keepCount and older than maxAge)
+	now := time.Now()
+	for idx := keepCount; idx < len(candidates); idx++ {
+		c := candidates[idx]
+		if now.Sub(c.mod) > maxAge {
+			os.RemoveAll(c.path)
+			debugf("Removed old session dir: %s\n", c.path)
+		}
+	}
 
-    return nil
+	return nil
 }

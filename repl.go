@@ -20,17 +20,17 @@ func RunREPL(state *ShellState, evaluator *GoEvaluator, spawner *ProcessSpawner,
 	// Create the intelligent completer to get access for cleanup
 	completer := NewGoshCompleter(evaluator)
 
-    // If we have an LSP client, record its virtual session file path in state
-    if gc, ok := completer.(*GoshCompleter); ok {
-        if lsp := gc.GetLSPClient(); lsp != nil {
-            state.SessionFilePath = lsp.VirtualFilePath()
-            // Also write the current session content to disk so opening the
-            // session file reflects the REPL state (functions, previous statements)
-            if err := lsp.WriteSessionFile(); err != nil {
-                debugf("Warning: failed to write session file: %v\n", err)
-            }
-        }
-    }
+	// If we have an LSP client, record its virtual session file path in state
+	if gc, ok := completer.(*GoshCompleter); ok {
+		if lsp := gc.GetLSPClient(); lsp != nil {
+			state.SessionFilePath = lsp.VirtualFilePath()
+			// Also write the current session content to disk so opening the
+			// session file reflects the REPL state (functions, previous statements)
+			if err := lsp.WriteSessionFile(); err != nil {
+				debugf("Warning: failed to write session file: %v\n", err)
+			}
+		}
+	}
 
 	// Ensure cleanup on exit
 	defer func() {
@@ -44,11 +44,11 @@ func RunREPL(state *ShellState, evaluator *GoEvaluator, spawner *ProcessSpawner,
 
 	// Try readline first, fallback to basic mode if it fails
 	rl, useReadline := setupReadlineWithFallback(completer)
-    if useReadline {
+	if useReadline {
 		defer rl.Close()
 	} else {
-        debugln("\n🚨 Readline unavailable, using basic mode. Arrow keys and tab completion disabled.")
-        debugf("Check your terminal (TERM=%s) or ~/.inputrc configuration.\n", os.Getenv("TERM"))
+		debugln("\n🚨 Readline unavailable, using basic mode. Arrow keys and tab completion disabled.")
+		debugf("Check your terminal (TERM=%s) or ~/.inputrc configuration.\n", os.Getenv("TERM"))
 	}
 
 	for !state.ShouldExit {
@@ -243,12 +243,12 @@ func setupReadlineWithFallback(completer readline.AutoCompleter) (*readline.Inst
 // routeAndExecuteWithRecovery adds panic recovery for safe execution
 func routeAndExecuteWithRecovery(router *Router, evaluator *GoEvaluator, spawner *ProcessSpawner, builtins *BuiltinHandler, input string, state *ShellState, completer *GoshCompleter) ExecutionResult {
 	// Recover from panics during execution
-    defer func() {
-        if r := recover(); r != nil {
-            debugf("\n🚨 Panic recovered: %v\n", r)
-            debugln("Type 'exit' to quit or continue with a new command.")
-        }
-    }()
+	defer func() {
+		if r := recover(); r != nil {
+			debugf("\n🚨 Panic recovered: %v\n", r)
+			debugln("Type 'exit' to quit or continue with a new command.")
+		}
+	}()
 
 	inputType, command, args := router.Route(input)
 
@@ -312,30 +312,30 @@ func routeAndExecuteWithRecovery(router *Router, evaluator *GoEvaluator, spawner
 }
 
 func setupSignals(state *ShellState) {
-    defer func() {
-        if r := recover(); r != nil {
-            debugf("🚨 Signal handler panic recovered: %v\n", r)
-        }
-    }()
+	defer func() {
+		if r := recover(); r != nil {
+			debugf("🚨 Signal handler panic recovered: %v\n", r)
+		}
+	}()
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
-        defer func() {
-            if r := recover(); r != nil {
-                debugf("🚨 Signal goroutine panic recovered: %v\n", r)
-            }
-        }()
+		defer func() {
+			if r := recover(); r != nil {
+				debugf("🚨 Signal goroutine panic recovered: %v\n", r)
+			}
+		}()
 
 		for sig := range sigChan {
 			switch sig {
 			case os.Interrupt:
 				// Ctrl+C - interrupt current process or print newline
 				if state.CurrentProcess != nil {
-                    if err := state.CurrentProcess.Signal(os.Interrupt); err != nil {
-                        debugf("Failed to signal process: %v\n", err)
-                    }
+					if err := state.CurrentProcess.Signal(os.Interrupt); err != nil {
+						debugf("Failed to signal process: %v\n", err)
+					}
 					fmt.Println("^C")
 				} else {
 					fmt.Println("^C")

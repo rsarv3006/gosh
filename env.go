@@ -21,7 +21,7 @@ func NewEnvironmentManager(state *ShellState) *EnvironmentManager {
 // InitializeEnvironment sets up the hybrid environment strategy
 func (em *EnvironmentManager) InitializeEnvironment() {
 	isLogin := em.isLoginShell()
-	
+
 	if isLogin {
 		em.loadLoginShellConfigs()
 	} else {
@@ -102,10 +102,10 @@ func (em *EnvironmentManager) loadInteractiveConfigs(home string) {
 // loadSystemConfigs loads system-wide shell configurations
 func (em *EnvironmentManager) loadSystemConfigs() {
 	systemConfigs := []string{
-		"/etc/zprofile",   // Zsh system-wide login
-		"/etc/profile",    // POSIX system-wide login
-		"/etc/bashrc",     // Bash system-wide interactive
-		"/etc/zshrc",      // Zsh system-wide interactive
+		"/etc/zprofile", // Zsh system-wide login
+		"/etc/profile",  // POSIX system-wide login
+		"/etc/bashrc",   // Bash system-wide interactive
+		"/etc/zshrc",    // Zsh system-wide interactive
 	}
 
 	for _, configPath := range systemConfigs {
@@ -173,7 +173,7 @@ func (em *EnvironmentManager) handleEvalStatement(evalLine string) {
 		em.handleBrewShellenv()
 		return
 	}
-	
+
 	// TODO: Handle other eval statements if needed
 }
 
@@ -181,11 +181,11 @@ func (em *EnvironmentManager) handleEvalStatement(evalLine string) {
 func (em *EnvironmentManager) handleBrewShellenv() {
 	// Try common brew locations
 	brewPaths := []string{
-		"/opt/homebrew/bin/brew", // Apple Silicon
-		"/usr/local/bin/brew",     // Intel
+		"/opt/homebrew/bin/brew",              // Apple Silicon
+		"/usr/local/bin/brew",                 // Intel
 		"/home/linuxbrew/.linuxbrew/bin/brew", // Linux
 	}
-	
+
 	var brewPath string
 	for _, path := range brewPaths {
 		if _, err := os.Stat(path); err == nil {
@@ -193,7 +193,7 @@ func (em *EnvironmentManager) handleBrewShellenv() {
 			break
 		}
 	}
-	
+
 	if brewPath == "" {
 		return
 	}
@@ -228,13 +228,13 @@ func (em *EnvironmentManager) addBrewPaths() {
 	currentPath := em.state.Environment["PATH"]
 	brewBin := "/opt/homebrew/bin"
 	brewSBin := "/opt/homebrew/sbin"
-	
+
 	if !strings.Contains(currentPath, brewBin) {
 		if _, err := os.Stat(brewBin); err == nil {
 			em.state.Environment["PATH"] = brewBin + ":" + currentPath
 		}
 	}
-	
+
 	if !strings.Contains(em.state.Environment["PATH"], brewSBin) {
 		if _, err := os.Stat(brewSBin); err == nil {
 			em.state.Environment["PATH"] = em.state.Environment["PATH"] + ":" + brewSBin
@@ -248,7 +248,7 @@ func (em *EnvironmentManager) getAllEnvVars() []string {
 	for k, v := range em.state.Environment {
 		env = append(env, k+"="+v)
 	}
-	
+
 	// Add current process env as fallback
 	for _, v := range os.Environ() {
 		parts := strings.SplitN(v, "=", 2)
@@ -258,7 +258,7 @@ func (em *EnvironmentManager) getAllEnvVars() []string {
 			}
 		}
 	}
-	
+
 	return env
 }
 
@@ -320,7 +320,7 @@ func (em *EnvironmentManager) inheritFromParentShell() {
 	if home != "" {
 		em.loadInteractiveConfigs(home)
 	}
-	
+
 	// Ensure critical variables are present
 	em.ensureCriticalEnvVars()
 }
@@ -328,11 +328,11 @@ func (em *EnvironmentManager) inheritFromParentShell() {
 // ensureCriticalEnvVars ensures essential environment variables are set
 func (em *EnvironmentManager) ensureCriticalEnvVars() {
 	criticalVars := map[string]string{
-		"HOME":     "/Users/" + os.Getenv("USER"),
-		"USER":     os.Getenv("USER"),
-		"LANG":     "en_US.UTF-8",
-		"TERM":     "xterm-256color",
-		"SHELL":    "/bin/bash", // Fallback
+		"HOME":  "/Users/" + os.Getenv("USER"),
+		"USER":  os.Getenv("USER"),
+		"LANG":  "en_US.UTF-8",
+		"TERM":  "xterm-256color",
+		"SHELL": "/bin/bash", // Fallback
 	}
 
 	// NOTE: We DON'T set default PATH here to avoid overriding inherited PATH

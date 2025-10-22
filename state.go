@@ -17,8 +17,8 @@ type ShellState struct {
 	ShouldExit       bool
 	ExitCode         int
 	CurrentProcess   *os.Process
-    // Path to the temporary session file used for LSP / editor operations
-    SessionFilePath  string
+	// Path to the temporary session file used for LSP / editor operations
+	SessionFilePath string
 	// Cached prompt to avoid expensive color rendering
 	cachedPrompt string
 	promptHash   string // Content hash to detect changes

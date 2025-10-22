@@ -45,7 +45,7 @@ func (s *SymbolExtractor) refreshIfNeeded() {
 			s.cacheMutex.Unlock()
 		}
 	}()
-	
+
 	// For now, refresh on every call. In a more sophisticated implementation,
 	// we could track changes more efficiently.
 	s.extractSymbols()
@@ -71,7 +71,7 @@ func (s *SymbolExtractor) extractSymbols() {
 
 	for pkgName, pkgSymbols := range symbols {
 		completions := []CompletionItem{}
-		
+
 		for symName, symValue := range pkgSymbols {
 			if !symValue.IsValid() {
 				continue
@@ -84,7 +84,7 @@ func (s *SymbolExtractor) extractSymbols() {
 						// Skip problematic symbols
 					}
 				}()
-				
+
 				item := s.createCompletionItem(symName, symValue)
 				completions = append(completions, item)
 			}()
@@ -130,7 +130,7 @@ func (s *SymbolExtractor) getFunctionSignature(fn reflect.Value) string {
 	}
 
 	fnType := fn.Type()
-	
+
 	// Build parameter list
 	var params []string
 	for i := 0; i < fnType.NumIn(); i++ {

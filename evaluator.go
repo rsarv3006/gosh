@@ -21,20 +21,17 @@ import (
 var globalShellState *ShellState
 var shellStateMutex sync.Mutex
 
-
-
 type GoEvaluator struct {
-	interp         *interp.Interpreter
-	stdoutPipe     *os.File
-	stderrPipe     *os.File
-	originalOut    *os.File
-	originalErr    *os.File
-	state          *ShellState
-	spawner        *ProcessSpawner
-	builtins       *BuiltinHandler // Add builtin handler reference
-	configFuncs    map[string]reflect.Value // Store config functions for calling
-	
-	
+	interp      *interp.Interpreter
+	stdoutPipe  *os.File
+	stderrPipe  *os.File
+	originalOut *os.File
+	originalErr *os.File
+	state       *ShellState
+	spawner     *ProcessSpawner
+	builtins    *BuiltinHandler          // Add builtin handler reference
+	configFuncs map[string]reflect.Value // Store config functions for calling
+
 }
 
 func NewGoEvaluator() *GoEvaluator {
@@ -43,23 +40,21 @@ func NewGoEvaluator() *GoEvaluator {
 	tempDir := "/tmp/gosh-clean-" + fmt.Sprintf("%d", os.Getpid())
 	os.MkdirAll(tempDir, 0755)
 	os.Chdir(tempDir)
-	
+
 	// Create interpreter in clean directory with unrestricted access to os/exec
 	i := interp.New(interp.Options{
-		GoPath:      os.Getenv("GOPATH"),
-		Stdout:      os.Stdout, // Will be updated per-eval
-		Stderr:      os.Stderr,
+		GoPath:       os.Getenv("GOPATH"),
+		Stdout:       os.Stdout, // Will be updated per-eval
+		Stderr:       os.Stderr,
 		Unrestricted: true, // Enable access to os/exec and other restricted packages
 	})
-	
+
 	// Change back to original directory RIGHT AWAY (not in defer)
 	os.Chdir(originalDir)
 	os.RemoveAll(tempDir)
 
 	// Load standard library
 	i.Use(stdlib.Symbols)
-
-	
 
 	// Pre-import common packages for convenience (but NOT os/exec - will use it via shellapi functions)
 	if _, err := i.Eval(`
@@ -73,10 +68,6 @@ import (
 		debugf("Warning: Failed to preload packages: %v\n", err)
 	}
 
-	
-	
-	
-	
 	// Inject shellapi functions that use os/exec internally (whitelisted via Go code)
 	shellapiSymbols := map[string]map[string]reflect.Value{
 		"shellapi/shellapi": {
@@ -84,7 +75,7 @@ import (
 				// Handle cd specially - IMMEDIATELY change the directory so it works within functions
 				if name == "cd" && len(args) > 0 {
 					targetPath := args[0]
-					
+
 					// Handle path expansion
 					var expandedPath string
 					if strings.HasPrefix(targetPath, "~") {
@@ -100,23 +91,23 @@ import (
 						cwd, _ := os.Getwd()
 						expandedPath = filepath.Join(cwd, targetPath)
 					}
-					
+
 					// Perform actual directory change immediately - THIS IS THE FIX!
 					if err := os.Chdir(expandedPath); err != nil {
 						return fmt.Sprintf("cd: %s: %v", targetPath, err), nil
 					}
-					
+
 					// CRITICAL: Update global shell state for ALL cases (interactive and function calls)
 					shellStateMutex.Lock()
 					if globalShellState != nil {
 						globalShellState.WorkingDirectory = expandedPath
 					}
 					shellStateMutex.Unlock()
-					
-					// Return the marker for config function calling compatibility  
+
+					// Return the marker for config function calling compatibility
 					return "@GOSH_INTERNAL_CD:" + targetPath, nil
 				}
-				
+
 				// Execute command using os/exec in Go code (this works - we whitelisted os/exec manually)
 				cmd := exec.Command(name, args...)
 				output, err := cmd.CombinedOutput()
@@ -158,13 +149,11 @@ import (
 			}),
 		},
 	}
-	
+
 	// Inject shellapi functions
 	if err := i.Use(shellapiSymbols); err != nil {
 		debugf("Failed to inject shellapi symbols: %v\n", err)
 	}
-
-	
 
 	evaluator := &GoEvaluator{
 		interp:      i,
@@ -172,14 +161,14 @@ import (
 		originalErr: os.Stderr,
 		configFuncs: make(map[string]reflect.Value),
 	}
-	
+
 	return evaluator
 }
 
 func (g *GoEvaluator) SetupWithShell(state *ShellState, spawner *ProcessSpawner) {
 	g.state = state
 	g.spawner = spawner
-	
+
 	// Set global reference for shellapi access
 	shellStateMutex.Lock()
 	globalShellState = state
@@ -195,11 +184,11 @@ func (g *GoEvaluator) stripImports(code string) string {
 	var result []string
 	inImport := false
 	shouldSkip := false
-	
+
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		shouldSkip = false
-		
+
 		if strings.HasPrefix(trimmed, "import ") {
 			if strings.Contains(line, "github.com/rsarv3006/gosh_lib/shellapi") {
 				// Skip shellapi import specifically
@@ -226,12 +215,12 @@ func (g *GoEvaluator) stripImports(code string) string {
 				shouldSkip = true
 			}
 		}
-		
+
 		if !shouldSkip {
 			result = append(result, line)
 		}
 	}
-	
+
 	return strings.Join(result, "\n")
 }
 
@@ -256,8 +245,6 @@ func (g *GoEvaluator) loadConfigFile(configType, configPath string) error {
 	if err != nil {
 		return fmt.Errorf("error reading %s (%s): %w", configType, configPath, err)
 	}
-
-	
 
 	// Define shell functions that will use command substitution
 	shellCode := `
@@ -289,7 +276,7 @@ func ExecShell(name string, args ...string) error {
 
 	// Replace shellapi imports with our injected package path BEFORE stripping
 	userCode := strings.ReplaceAll(string(content), `"github.com/rsarv3006/gosh_lib/shellapi"`, `"shellapi/shellapi"`)
-	
+
 	// Strip package declaration from user code (but keep all imports including shellapi/shellapi)
 	lines := strings.Split(userCode, "\n")
 	var cleanLines []string
@@ -309,7 +296,7 @@ func ExecShell(name string, args ...string) error {
 	// Extract and store config functions for calling
 	g.extractConfigFunctions()
 
-    debugf("Loaded %s from %s\n", configType, configPath)
+	debugf("Loaded %s from %s\n", configType, configPath)
 	return nil
 }
 
@@ -326,7 +313,7 @@ func (g *GoEvaluator) getHomeConfigPath() string {
 func (g *GoEvaluator) extractConfigFunctions() {
 	// Common config functions to look for
 	functionNames := []string{"gs", "build", "test", "run", "goGosh", "GitStatus", "ListFiles", "CurrentBranch", "showGo", "clean", "hello", "RunShell"}
-	
+
 	for _, funcName := range functionNames {
 		// Try to evaluate the function name to get its value
 		if val, err := g.interp.Eval(funcName); err == nil && val.IsValid() {
@@ -351,20 +338,18 @@ func (g *GoEvaluator) callConfigFunction(funcName string, args []reflect.Value) 
 	return reflect.Value{}, fmt.Errorf("function %s not found", funcName)
 }
 
-
-
 func (g *GoEvaluator) Eval(code string) ExecutionResult {
 	// Mark that we're entering yaegi evaluation
 	SetYaegiEvalState(true)
 	defer func() {
 		SetYaegiEvalState(false)
 	}()
-	
+
 	// Trim whitespace for checking
 	trimmed := strings.TrimSpace(code)
-	
+
 	// Check if this is a bare function call from config (like "gs()" or "gs")
-	// But NOT an assignment like "result := func()" 
+	// But NOT an assignment like "result := func()"
 	if funcMatch := strings.Index(trimmed, "("); funcMatch > 0 && !strings.Contains(trimmed, ":=") && !strings.Contains(trimmed, "=") {
 		funcName := trimmed[:funcMatch]
 		argsStr := ""
@@ -374,14 +359,14 @@ func (g *GoEvaluator) Eval(code string) ExecutionResult {
 				argsStr = argsStr[:len(argsStr)-1] // Remove trailing )
 			}
 		}
-		
+
 		// Try to call config function
 		var args []reflect.Value
 		if argsStr != "" {
 			// For now, only support no-argument functions like gs()
 			// TODO: Parse arguments properly if needed
 		}
-		
+
 		result, err := g.callConfigFunction(funcName, args)
 		if err == nil {
 			// Function was found and called successfully
@@ -427,7 +412,7 @@ func (g *GoEvaluator) Eval(code string) ExecutionResult {
 		}
 		// If not found in config, continue with normal evaluation
 	}
-	
+
 	// Process command substitutions first
 	processedCode := g.processCommandSubstitutions(code)
 
@@ -568,20 +553,16 @@ func (g *GoEvaluator) Eval(code string) ExecutionResult {
 // EvalWithRecovery provides additional safety against yaegi crashes
 func (g *GoEvaluator) EvalWithRecovery(code string) ExecutionResult {
 	// Add an outer layer of recovery
-    defer func() {
-        if r := recover(); r != nil {
-            debugln("\n🚨 CRITICAL: yaegi interpreter crashed!")
-            debugln("🚨 ERROR: Go evaluation may be unstable. Consider restarting.")
-            debugf("🚨 ERROR: Last command was: %s\n", code[:evaluatorMin(len(code), 50)])
-        }
-    }()
-	
+	defer func() {
+		if r := recover(); r != nil {
+			debugln("\n🚨 CRITICAL: yaegi interpreter crashed!")
+			debugln("🚨 ERROR: Go evaluation may be unstable. Consider restarting.")
+			debugf("🚨 ERROR: Last command was: %s\n", code[:evaluatorMin(len(code), 50)])
+		}
+	}()
+
 	return g.Eval(code)
 }
-
-
-
-
 
 // min function for evaluator use
 func evaluatorMin(a, b int) int {
@@ -622,7 +603,7 @@ func (g *GoEvaluator) processCommandSubstitutionsForDisplay(code string) string 
 
 		// Extract command
 		command := code[start+2 : end]
-		
+
 		// Parse the command properly
 		parts := strings.Fields(command)
 		if len(parts) == 0 {
@@ -631,10 +612,10 @@ func (g *GoEvaluator) processCommandSubstitutionsForDisplay(code string) string 
 		}
 		cmd := parts[0]
 		args := parts[1:]
-		
+
 		spawner := NewProcessSpawner(g.state)
 		result := spawner.Execute(cmd, args)
-		
+
 		// Return RAW output without any escaping
 		output := result.Output
 
@@ -674,7 +655,7 @@ func (g *GoEvaluator) processCommandSubstitutions(code string) string {
 
 		// Extract command
 		command := code[start+2 : end]
-		
+
 		// Execute command and get output
 		// Parse the command properly
 		parts := strings.Fields(command)
@@ -684,10 +665,10 @@ func (g *GoEvaluator) processCommandSubstitutions(code string) string {
 		}
 		cmd := parts[0]
 		args := parts[1:]
-		
+
 		spawner := NewProcessSpawner(g.state) // Use current shell state for proper execution
 		result := spawner.Execute(cmd, args)
-		
+
 		// Escape the output for Go string literal
 		output := strings.ReplaceAll(result.Output, "\\", "\\\\")
 		output = strings.ReplaceAll(output, "\"", "\\\"")
@@ -735,5 +716,3 @@ func (g *GoEvaluator) evaluateStoredConfig(configType, configContent string) err
 	fmt.Printf("Loaded %s\n", configType)
 	return nil
 }
-
-

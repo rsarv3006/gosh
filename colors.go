@@ -12,11 +12,11 @@ import (
 
 // Color configuration structures
 type PromptColors struct {
-	Directory  string `json:"directory"`
-	GitPrefix   string `json:"git_prefix"`   // "git:" part
-	GitBranch  string `json:"git_branch"`  // branch name only
-	Separator  string `json:"separator"`
-	Symbol     string `json:"symbol"`
+	Directory string `json:"directory"`
+	GitPrefix string `json:"git_prefix"` // "git:" part
+	GitBranch string `json:"git_branch"` // branch name only
+	Separator string `json:"separator"`
+	Symbol    string `json:"symbol"`
 }
 
 type OutputColors struct {
@@ -33,9 +33,9 @@ type MessageColors struct {
 }
 
 type ColorTheme struct {
-	Name     string       `json:"name"`
-	Prompt   PromptColors `json:"prompt"`
-	Output   OutputColors `json:"output"`
+	Name     string        `json:"name"`
+	Prompt   PromptColors  `json:"prompt"`
+	Output   OutputColors  `json:"output"`
 	Messages MessageColors `json:"messages"`
 }
 
@@ -45,9 +45,9 @@ var builtinThemes = map[string]ColorTheme{
 		Name: "dark",
 		Prompt: PromptColors{
 			Directory: "#00ff41", // Bright green
-			GitPrefix: "#e74c3c",  // Bright red
+			GitPrefix: "#e74c3c", // Bright red
 			GitBranch: "#3498db", // Bold blue
-			Separator: "#95a5a6",  // Silver
+			Separator: "#95a5a6", // Silver
 			Symbol:    "#ffd43b", // Bright yellow
 		},
 		Output: OutputColors{
@@ -66,10 +66,10 @@ var builtinThemes = map[string]ColorTheme{
 		Name: "light",
 		Prompt: PromptColors{
 			Directory: "#1e40af", // Dark blue
-			GitPrefix:  "#dc2626", // Dark red
-			GitBranch:  "#7c3aed", // Dark purple
+			GitPrefix: "#dc2626", // Dark red
+			GitBranch: "#7c3aed", // Dark purple
 			Separator: "#6b7280", // Medium gray
-			Symbol:     "#d97706", // Dark amber
+			Symbol:    "#d97706", // Dark amber
 		},
 		Output: OutputColors{
 			Success: "#388e3c", // Dark green
@@ -86,11 +86,11 @@ var builtinThemes = map[string]ColorTheme{
 	"mono": {
 		Name: "mono",
 		Prompt: PromptColors{
-			Directory: "",  // No color
-			GitPrefix:  "", // No color
-			GitBranch:  "", // No color
-			Separator:  "", // No color
-			Symbol:     "", // No color
+			Directory: "", // No color
+			GitPrefix: "", // No color
+			GitBranch: "", // No color
+			Separator: "", // No color
+			Symbol:    "", // No color
 		},
 		Output: OutputColors{
 			Success: "", // No color
@@ -108,10 +108,10 @@ var builtinThemes = map[string]ColorTheme{
 		Name: "solarized",
 		Prompt: PromptColors{
 			Directory: "#268bd2", // Solarized blue
-			GitPrefix:  "#cb4b16", // Solarized orange
-			GitBranch:  "#859900", // Solarized green
+			GitPrefix: "#cb4b16", // Solarized orange
+			GitBranch: "#859900", // Solarized green
 			Separator: "#586e75", // Solarized base01
-			Symbol:     "#b58900", // Solarized yellow
+			Symbol:    "#b58900", // Solarized yellow
 		},
 		Output: OutputColors{
 			Success: "#859900", // Solarized green
@@ -157,7 +157,7 @@ func shouldUseNoColor() bool {
 	if os.Getenv("NO_COLOR") != "" {
 		return true
 	}
-	
+
 	// Always enable colors for interactive REPL sessions
 	// The REPL is designed to be colorful regardless of TTY status
 	return false
@@ -168,7 +168,7 @@ func SetColorTheme(theme interface{}) {
 	if colorManager == nil {
 		colorManager = NewColorManager()
 	}
-	
+
 	switch t := theme.(type) {
 	case string:
 		// Preset theme by name
@@ -176,10 +176,10 @@ func SetColorTheme(theme interface{}) {
 			colorManager.theme = presetTheme
 			colorManager.currentName = t
 		}
-		
+
 		// Force refresh of prompt colors
 		colorManager.ForceRefresh()
-		
+
 		// Try dynamic theme creation with hex colors for presets that aren't built-in
 		switch t {
 		case "light":
@@ -189,7 +189,7 @@ func SetColorTheme(theme interface{}) {
 			colorManager.theme = createMonoTheme()
 			colorManager.currentName = t
 		}
-		
+
 	case ColorTheme:
 		// Custom theme object
 		colorManager.theme = t
@@ -202,7 +202,7 @@ func SetPromptColor(component, color string) {
 	if colorManager == nil {
 		colorManager = NewColorManager()
 	}
-	
+
 	switch strings.ToLower(component) {
 	case "directory", "dir":
 		colorManager.theme.Prompt.Directory = color
@@ -221,7 +221,7 @@ func SetOutputColor(outputType, color string) {
 	if colorManager == nil {
 		colorManager = NewColorManager()
 	}
-	
+
 	switch strings.ToLower(outputType) {
 	case "success":
 		colorManager.theme.Output.Success = color
@@ -239,7 +239,7 @@ func (cm *ColorManager) StylePrompt(text, component string) string {
 	if cm.noColor || text == "" {
 		return text
 	}
-	
+
 	var color string
 	switch component {
 	case "directory":
@@ -255,11 +255,11 @@ func (cm *ColorManager) StylePrompt(text, component string) string {
 	default:
 		return text
 	}
-	
+
 	if color == "" {
 		return text
 	}
-	
+
 	return lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(text)
 }
 
@@ -268,7 +268,7 @@ func (cm *ColorManager) StyleOutput(text, outputType string) string {
 	if cm.noColor || text == "" {
 		return text
 	}
-	
+
 	var color string
 	switch outputType {
 	case "success":
@@ -282,15 +282,13 @@ func (cm *ColorManager) StyleOutput(text, outputType string) string {
 	default:
 		return text
 	}
-	
+
 	if color == "" {
 		return text
 	}
-	
+
 	return lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(text)
 }
-
-
 
 // GetColorManager returns the global color manager
 // Safe to call anytime (including during yaegi evaluation)
@@ -311,7 +309,7 @@ func (cm *ColorManager) StyleMessage(text, messageType string) string {
 	if cm.noColor || inYaegiEval || text == "" {
 		return text
 	}
-	
+
 	var color string
 	switch messageType {
 	case "welcome":
@@ -323,11 +321,11 @@ func (cm *ColorManager) StyleMessage(text, messageType string) string {
 	default:
 		return text
 	}
-	
+
 	if color == "" {
 		return text
 	}
-	
+
 	return lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(text)
 }
 
@@ -368,7 +366,7 @@ func PrintCurrentTheme() {
 	if colorManager == nil {
 		colorManager = NewColorManager()
 	}
-	
+
 	theme := colorManager.theme
 	fmt.Printf("Current theme: %s\n", theme.Name)
 	fmt.Printf("Prompt Colors:\n")
@@ -393,7 +391,7 @@ func ExportTheme() string {
 	if colorManager == nil {
 		colorManager = NewColorManager()
 	}
-	
+
 	theme := colorManager.theme
 	return fmt.Sprintf(`ColorTheme{
 	Name: "%s",

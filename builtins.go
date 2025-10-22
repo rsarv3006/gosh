@@ -3,11 +3,11 @@
 package main
 
 import (
-    "fmt"
-    "os"
-    "os/exec"
-    "path/filepath"
-    "strings"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 )
 
 type BuiltinHandler struct {
@@ -20,7 +20,7 @@ func NewBuiltinHandler(state *ShellState) *BuiltinHandler {
 
 func (b *BuiltinHandler) IsBuiltin(command string) bool {
 	switch command {
-    case "cd", "exit", "help", "init", "session":
+	case "cd", "exit", "help", "init", "session":
 		return true
 	default:
 		return false
@@ -37,8 +37,8 @@ func (b *BuiltinHandler) Execute(command string, args []string) ExecutionResult 
 		return b.help(args)
 	case "init":
 		return b.initConfig(args)
-    case "session":
-        return b.session(args)
+	case "session":
+		return b.session(args)
 	default:
 		return ExecutionResult{
 			Output:   fmt.Sprintf("Unknown builtin: %s", command),
@@ -340,24 +340,24 @@ func (b *BuiltinHandler) help(args []string) ExecutionResult {
 		}
 	}
 
-    // Help for session builtin
-    if command == "session" {
-        return ExecutionResult{
-            Output: "session - Open or print the current REPL session file\n\n" +
-                "USAGE:\n" +
-                "    session          # Open session file in $EDITOR or system opener\n" +
-                "    session --print  # Print path to session file\n\n" +
-                "DESCRIPTION:\n" +
-                "    The session command opens a temporary Go file that mirrors the REPL\n" +
-                "    state. Function definitions are placed at package level and other\n" +
-                "    executable statements are placed inside func session(). This file\n" +
-                "    is updated after each executed Go input so editors show the current\n" +
-                "    REPL state.\n",
-            ExitCode: 0, Error: nil,
-        }
-    }
+	// Help for session builtin
+	if command == "session" {
+		return ExecutionResult{
+			Output: "session - Open or print the current REPL session file\n\n" +
+				"USAGE:\n" +
+				"    session          # Open session file in $EDITOR or system opener\n" +
+				"    session --print  # Print path to session file\n\n" +
+				"DESCRIPTION:\n" +
+				"    The session command opens a temporary Go file that mirrors the REPL\n" +
+				"    state. Function definitions are placed at package level and other\n" +
+				"    executable statements are placed inside func session(). This file\n" +
+				"    is updated after each executed Go input so editors show the current\n" +
+				"    REPL state.\n",
+			ExitCode: 0, Error: nil,
+		}
+	}
 
-    // Check for Go features
+	// Check for Go features
 	if command == "substitution" || command == "command" || command == "go" || command == "golang" || command == "yaegi" {
 		if command == "substitution" || command == "command" {
 			return ExecutionResult{
@@ -426,87 +426,87 @@ func (b *BuiltinHandler) help(args []string) ExecutionResult {
 
 // session prints or opens the LSP session file used by the REPL
 func (b *BuiltinHandler) session(args []string) ExecutionResult {
-    // Parse flags: --print/-p and cleanup
-    printOnly := false
-    cleanupOnly := false
-    for _, a := range args {
-        if a == "--print" || a == "-p" {
-            printOnly = true
-        }
-        if a == "cleanup" || a == "--cleanup" {
-            cleanupOnly = true
-        }
-    }
+	// Parse flags: --print/-p and cleanup
+	printOnly := false
+	cleanupOnly := false
+	for _, a := range args {
+		if a == "--print" || a == "-p" {
+			printOnly = true
+		}
+		if a == "cleanup" || a == "--cleanup" {
+			cleanupOnly = true
+		}
+	}
 
-    sessionPath := b.state.SessionFilePath
-    if sessionPath == "" {
-        // If LSP not initialized, create a fallback temp file path
-        tmpDir := os.TempDir()
-        sessionPath = filepath.Join(tmpDir, "gosh-session.go")
-    }
+	sessionPath := b.state.SessionFilePath
+	if sessionPath == "" {
+		// If LSP not initialized, create a fallback temp file path
+		tmpDir := os.TempDir()
+		sessionPath = filepath.Join(tmpDir, "gosh-session.go")
+	}
 
-    if printOnly {
-        return ExecutionResult{Output: sessionPath, ExitCode: 0, Error: nil}
-    }
+	if printOnly {
+		return ExecutionResult{Output: sessionPath, ExitCode: 0, Error: nil}
+	}
 
-    if cleanupOnly {
-        // Perform cleanup of old session/workspace temp dirs. Keep 5 most recent.
-        if err := CleanOldSessionDirs(os.TempDir(), 0, 5); err != nil {
-            return ExecutionResult{Output: fmt.Sprintf("Cleanup failed: %v", err), ExitCode: 1, Error: err}
-        }
-        return ExecutionResult{Output: "Old session directories cleaned (kept 5 most recent)", ExitCode: 0, Error: nil}
-    }
+	if cleanupOnly {
+		// Perform cleanup of old session/workspace temp dirs. Keep 5 most recent.
+		if err := CleanOldSessionDirs(os.TempDir(), 0, 5); err != nil {
+			return ExecutionResult{Output: fmt.Sprintf("Cleanup failed: %v", err), ExitCode: 1, Error: err}
+		}
+		return ExecutionResult{Output: "Old session directories cleaned (kept 5 most recent)", ExitCode: 0, Error: nil}
+	}
 
-    // Ensure the session file exists on disk so system openers / editors can open it.
-    // gopls uses a virtual file path inside a temp dir and may never create a physical
-    // file. Creating a minimal session file avoids `open` failing with exit status 1.
-    dir := filepath.Dir(sessionPath)
-    if err := os.MkdirAll(dir, 0700); err != nil {
-        return ExecutionResult{Output: fmt.Sprintf("Failed to create session dir: %v", err), ExitCode: 1, Error: err}
-    }
-    if _, err := os.Stat(sessionPath); os.IsNotExist(err) {
-        initial := "package main\n\nimport \"fmt\"\n\nfunc session() {\n}\n"
-        if err := os.WriteFile(sessionPath, []byte(initial), 0644); err != nil {
-            return ExecutionResult{Output: fmt.Sprintf("Failed to create session file: %v", err), ExitCode: 1, Error: err}
-        }
-    }
+	// Ensure the session file exists on disk so system openers / editors can open it.
+	// gopls uses a virtual file path inside a temp dir and may never create a physical
+	// file. Creating a minimal session file avoids `open` failing with exit status 1.
+	dir := filepath.Dir(sessionPath)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return ExecutionResult{Output: fmt.Sprintf("Failed to create session dir: %v", err), ExitCode: 1, Error: err}
+	}
+	if _, err := os.Stat(sessionPath); os.IsNotExist(err) {
+		initial := "package main\n\nimport \"fmt\"\n\nfunc session() {\n}\n"
+		if err := os.WriteFile(sessionPath, []byte(initial), 0644); err != nil {
+			return ExecutionResult{Output: fmt.Sprintf("Failed to create session file: %v", err), ExitCode: 1, Error: err}
+		}
+	}
 
-    // Try to open with user's EDITOR
-    editor := strings.TrimSpace(b.state.Environment["EDITOR"])
-    if editor != "" {
-        parts := strings.Fields(editor)
-        cmd := exec.Command(parts[0], append(parts[1:], sessionPath)...)
-        cmd.Env = b.state.EnvironmentSlice()
-        cmd.Stdin = os.Stdin
-        cmd.Stdout = os.Stdout
-        cmd.Stderr = os.Stderr
-        if err := cmd.Run(); err != nil {
-            return ExecutionResult{Output: fmt.Sprintf("Failed to open editor %s: %v", editor, err), ExitCode: 1, Error: err}
-        }
-        return ExecutionResult{Output: "", ExitCode: 0, Error: nil}
-    }
+	// Try to open with user's EDITOR
+	editor := strings.TrimSpace(b.state.Environment["EDITOR"])
+	if editor != "" {
+		parts := strings.Fields(editor)
+		cmd := exec.Command(parts[0], append(parts[1:], sessionPath)...)
+		cmd.Env = b.state.EnvironmentSlice()
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return ExecutionResult{Output: fmt.Sprintf("Failed to open editor %s: %v", editor, err), ExitCode: 1, Error: err}
+		}
+		return ExecutionResult{Output: "", ExitCode: 0, Error: nil}
+	}
 
-    // Fallback: try to use system opener (macOS: open, Linux: xdg-open)
-    if _, err := exec.LookPath("open"); err == nil {
-        cmd := exec.Command("open", sessionPath)
-        cmd.Env = b.state.EnvironmentSlice()
-        if err := cmd.Run(); err != nil {
-            return ExecutionResult{Output: fmt.Sprintf("Failed to open session file with open: %v", err), ExitCode: 1, Error: err}
-        }
-        return ExecutionResult{Output: "", ExitCode: 0, Error: nil}
-    }
+	// Fallback: try to use system opener (macOS: open, Linux: xdg-open)
+	if _, err := exec.LookPath("open"); err == nil {
+		cmd := exec.Command("open", sessionPath)
+		cmd.Env = b.state.EnvironmentSlice()
+		if err := cmd.Run(); err != nil {
+			return ExecutionResult{Output: fmt.Sprintf("Failed to open session file with open: %v", err), ExitCode: 1, Error: err}
+		}
+		return ExecutionResult{Output: "", ExitCode: 0, Error: nil}
+	}
 
-    if _, err := exec.LookPath("xdg-open"); err == nil {
-        cmd := exec.Command("xdg-open", sessionPath)
-        cmd.Env = b.state.EnvironmentSlice()
-        if err := cmd.Run(); err != nil {
-            return ExecutionResult{Output: fmt.Sprintf("Failed to open session file with xdg-open: %v", err), ExitCode: 1, Error: err}
-        }
-        return ExecutionResult{Output: "", ExitCode: 0, Error: nil}
-    }
+	if _, err := exec.LookPath("xdg-open"); err == nil {
+		cmd := exec.Command("xdg-open", sessionPath)
+		cmd.Env = b.state.EnvironmentSlice()
+		if err := cmd.Run(); err != nil {
+			return ExecutionResult{Output: fmt.Sprintf("Failed to open session file with xdg-open: %v", err), ExitCode: 1, Error: err}
+		}
+		return ExecutionResult{Output: "", ExitCode: 0, Error: nil}
+	}
 
-    // As a last resort, just print the path
-    return ExecutionResult{Output: sessionPath, ExitCode: 0, Error: nil}
+	// As a last resort, just print the path
+	return ExecutionResult{Output: sessionPath, ExitCode: 0, Error: nil}
 }
 
 // initConfig creates the .config/gosh directory with go.mod and template config.go
@@ -542,16 +542,16 @@ go 1.21
 // Import gosh_lib for rich shell functions  
 require github.com/rsarv3006/gosh_lib v0.2.0
 `
-        if err := os.WriteFile(goModPath, []byte(goModContent), 0644); err != nil {
+		if err := os.WriteFile(goModPath, []byte(goModContent), 0644); err != nil {
 			return ExecutionResult{
 				Output:   fmt.Sprintf("Failed to create go.mod: %v", err),
 				ExitCode: 1,
 				Error:    err,
 			}
 		}
-        debugf("Created %s\n", goModPath)
+		debugf("Created %s\n", goModPath)
 	} else {
-        debugf("go.mod already exists at %s\n", goModPath)
+		debugf("go.mod already exists at %s\n", goModPath)
 	}
 
 	// Create config.go if it doesn't exist
@@ -659,21 +659,21 @@ func err(msg string) string {
 	return shellapi.Error(msg)  // Red colored text
 }
 `
-        if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
 			return ExecutionResult{
 				Output:   fmt.Sprintf("Failed to create config.go: %v", err),
 				ExitCode: 1,
 				Error:    err,
 			}
 		}
-        debugf("Created %s\n", configPath)
+		debugf("Created %s\n", configPath)
 	} else {
-        debugf("config.go already exists at %s\n", configPath)
+		debugf("config.go already exists at %s\n", configPath)
 	}
 
 	// Note: Skip go mod tidy for now since v0.1.0 checksum isn't published yet
-    debugln("📝 Config files created successfully!")
-    debugln("💡 Run 'cd ~/.config/gosh && go mod tidy' manually if needed")
+	debugln("📝 Config files created successfully!")
+	debugln("💡 Run 'cd ~/.config/gosh && go mod tidy' manually if needed")
 	return ExecutionResult{
 		Output:   fmt.Sprintf("✅ gosh config directory initialized at %s", configDir),
 		ExitCode: 0,
