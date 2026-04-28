@@ -190,7 +190,11 @@ func (m model) executeBlock(input string) string {
 
 	// Return output with separator if needed
 	if result.Output != "" {
-		separator := strings.Repeat("─", m.width)
+		width := m.width
+		if width == 0 {
+			width = 80
+		}
+		separator := strings.Repeat("─", width)
 		return fmt.Sprintf("%s\n%s\n%s\n", separator, result.Output, separator)
 	}
 
