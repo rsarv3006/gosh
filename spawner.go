@@ -123,83 +123,24 @@ func (p *ProcessSpawner) ExecuteInteractive(command string, args []string) Execu
 		}
 	}
 
-	env := p.state.EnvironmentSlice()
-	var modifiedArgs []string
-
-	if wantsColorForCommand(command, args) {
-		if !containsEnv(env, "CLICOLOR") {
-			env = append(env, "CLICOLOR=1")
-		}
-		if !containsEnv(env, "CLICOLOR_FORCE") {
-			env = append(env, "CLICOLOR_FORCE=1")
-		}
-		if !containsEnv(env, "TERM") {
-			env = append(env, "TERM=xterm-256color")
-		}
-		if !containsEnv(env, "FORCE_COLOR") {
-			env = append(env, "FORCE_COLOR=1")
-		}
-
-		if command == "ls" {
-			modifiedArgs = make([]string, len(args))
-			copy(modifiedArgs, args)
-			hasColorFlag := false
-			for _, arg := range args {
-				if arg == "--color=always" || arg == "--color" || strings.HasPrefix(arg, "--color=") {
-					hasColorFlag = true
-					break
-				}
-			}
-			if !hasColorFlag {
-				modifiedArgs = append(modifiedArgs, "--color=always")
-			}
-		}
-
-		if command == "git" {
-			if !containsEnv(env, "GIT_COLOR") {
-				env = append(env, "GIT_COLOR=always")
-			}
-		}
-	}
-
-	var finalArgs []string
-	if len(modifiedArgs) > 0 {
-		finalArgs = make([]string, len(modifiedArgs))
-		copy(finalArgs, modifiedArgs)
-		for i, arg := range finalArgs {
-			finalArgs[i] = p.expandShellVariables(arg)
-		}
-	} else {
-		finalArgs = make([]string, len(args))
-		copy(finalArgs, args)
-		for i, arg := range finalArgs {
-			finalArgs[i] = p.expandShellVariables(arg)
-		}
-	}
-
-	cmd := exec.Command(commandPath, finalArgs...)
+	cmd := exec.Command(commandPath, args...)
 	cmd.Dir = p.state.WorkingDirectory
-	cmd.Env = env
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Env = p.state.EnvironmentSlice()
 
-	err := cmd.Start()
-	if err != nil {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errOut
 
-		return ExecutionResult{
-			Output:   "",
-			ExitCode: 1,
-			Error:    err,
+	err := cmd.Run()
+
+	output := out.String()
+	if errOut.Len() > 0 {
+		if output != "" {
+			output += "\n"
 		}
+		output += errOut.String()
 	}
-
-	p.state.CurrentProcess = cmd.Process
-	defer func() {
-		p.state.CurrentProcess = nil
-	}()
-
-	err = cmd.Wait()
 
 	exitCode := 0
 	if err != nil {
@@ -211,11 +152,11 @@ func (p *ProcessSpawner) ExecuteInteractive(command string, args []string) Execu
 	}
 
 	return ExecutionResult{
-		Output:   "",
+		Output:   output,
 		ExitCode: exitCode,
-		Error:    err,
 	}
 }
+
 
 func (p *ProcessSpawner) expandShellVariables(input string) string {
 	result := input
