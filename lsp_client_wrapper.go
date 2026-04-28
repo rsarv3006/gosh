@@ -235,8 +235,8 @@ func (l *LSPClientWrapper) GetCompletions(line string, pos int) ([]LSPCompletion
 	// Give gopls a moment to process
 	time.Sleep(50 * time.Millisecond)
 
-// Calculate cursor position inside the session() function
-// Count actual lines in session history (some entries may be multiline)
+	// Calculate cursor position inside the session() function
+	// Count actual lines in session history (some entries may be multiline)
 	historyLineCount := 0
 	for _, histLine := range l.sessionHistory {
 		historyLineCount += strings.Count(histLine, "\n") + 1

@@ -514,7 +514,7 @@ func (b *BuiltinHandler) session(args []string) ExecutionResult {
 // initConfig creates the .config/gosh directory with go.mod and template config.go
 func (b *BuiltinHandler) pwd(args []string) ExecutionResult {
 	return ExecutionResult{
-		Output: b.state.WorkingDirectory,
+		Output:   b.state.WorkingDirectory,
 		ExitCode: 0,
 	}
 }

@@ -12,16 +12,16 @@ import (
 )
 
 type model struct {
-	textarea    textarea.Model
-	session     *SessionState
-	evaluator   *GoEvaluator
-	spawner     *ProcessSpawner
-	builtins    *BuiltinHandler
-	output      string
-	quitting    bool
-	width       int
-	height      int
-	historyIdx  int
+	textarea   textarea.Model
+	session    *SessionState
+	evaluator  *GoEvaluator
+	spawner    *ProcessSpawner
+	builtins   *BuiltinHandler
+	output     string
+	quitting   bool
+	width      int
+	height     int
+	historyIdx int
 }
 
 func initialModel(session *SessionState, evaluator *GoEvaluator, spawner *ProcessSpawner, builtins *BuiltinHandler) model {

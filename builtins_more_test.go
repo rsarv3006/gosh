@@ -44,7 +44,7 @@ func TestBuiltinIsBuiltin(t *testing.T) {
 	builtins := NewBuiltinHandler(state)
 
 	tests := []struct {
-		command string
+		command  string
 		expected bool
 	}{
 		{"cd", true},
