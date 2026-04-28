@@ -40,7 +40,8 @@ func NewSessionState() *SessionState {
 		s.WorkingDir = wd
 	}
 
-	s.loadHistory()
+	// Don't load history on startup - avoid displaying old commands
+	// s.loadHistory()
 
 	return s
 }

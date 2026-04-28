@@ -115,15 +115,12 @@ func (p *ProcessSpawner) Execute(command string, args []string) ExecutionResult 
 }
 
 func (p *ProcessSpawner) ExecuteInteractive(command string, args []string) ExecutionResult {
-	commandPath := command
-	// Don't resolve local paths through PATH - use them directly
-	if !strings.HasPrefix(command, "./") {
-		if fullPath, found := FindInPath(command, p.state.Environment["PATH"]); found {
-			commandPath = fullPath
-		}
+	// Add -C to ls to force column output even when not a terminal
+	if command == "ls" {
+		args = append([]string{"-C"}, args...)
 	}
 
-	cmd := exec.Command(commandPath, args...)
+	cmd := exec.Command(command, args...)
 	cmd.Dir = p.state.WorkingDirectory
 	cmd.Env = p.state.EnvironmentSlice()
 
