@@ -208,6 +208,19 @@ func (m model) View() string {
 
 	var sb strings.Builder
 
+	// Show full history
+	for _, block := range m.session.History {
+		if block.Output != "" {
+			width := m.width
+			if width == 0 {
+				width = 80
+			}
+			separator := strings.Repeat("─", width)
+			sb.WriteString(fmt.Sprintf("%s\n%s\n%s\n", separator, block.Output, separator))
+		}
+	}
+
+
 	if m.output != "" {
 		sb.WriteString(m.output)
 		if !strings.HasSuffix(m.output, "\n") {
