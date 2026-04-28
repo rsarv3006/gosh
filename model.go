@@ -206,6 +206,9 @@ func (m model) View() string {
 
 	if m.output != "" {
 		sb.WriteString(m.output)
+		if !strings.HasSuffix(m.output, "\n") {
+			sb.WriteString("\n")
+		}
 	}
 
 	sb.WriteString(m.textarea.View())
