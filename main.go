@@ -97,8 +97,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "%s\n", colors.StyleOutput(fmt.Sprintf("Config loading error: %v", err), "error"))
 	}
 
-	// Start Bubbletea REPL
-	p := tea.NewProgram(initialModel(session, evaluator, spawner, builtins), tea.WithAltScreen())
+	// Start Bubbletea REPL (normal mode - no alt screen)
+	p := tea.NewProgram(initialModel(session, evaluator, spawner, builtins))
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", colors.StyleOutput(fmt.Sprintf("Error: %v", err), "error"))
 		os.Exit(1)
