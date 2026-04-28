@@ -230,6 +230,11 @@ func (g *GoEvaluator) LoadConfig() error {
 		return err
 	}
 
+	// Load project-specific config if it exists
+	if err := g.loadConfigFile("project config", g.getProjectConfigPath()); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -307,6 +312,29 @@ func (g *GoEvaluator) getHomeConfigPath() string {
 		return ""
 	}
 	return filepath.Join(homeDir, ".config", "gosh", "config.go")
+}
+
+// getProjectConfigPath returns the project config path if it exists
+func (g *GoEvaluator) getProjectConfigPath() string {
+	// Look for project config files in order of preference
+	projectConfigFiles := []string{
+		".goshconfig.go",
+		"gosh.config.go",
+	}
+
+	// Check each potential config file
+	for _, configFile := range projectConfigFiles {
+		if _, err := os.Stat(configFile); err == nil {
+			// Found a project config file
+			absPath, err := filepath.Abs(configFile)
+			if err != nil {
+				return configFile // fallback to relative path
+			}
+			return absPath
+		}
+	}
+
+	return "" // No project config found
 }
 
 // extractConfigFunctions finds and stores functions from the evaluated config
@@ -562,6 +590,15 @@ func (g *GoEvaluator) EvalWithRecovery(code string) ExecutionResult {
 	}()
 
 	return g.Eval(code)
+}
+
+// InjectVariable injects a variable into the interpreter's scope
+func (g *GoEvaluator) InjectVariable(name string, value interface{}) error {
+	// Create Go code that assigns the variable
+	code := fmt.Sprintf("%s := %#v", name, value)
+
+	_, err := g.interp.Eval(code)
+	return err
 }
 
 // min function for evaluator use

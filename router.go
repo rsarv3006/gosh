@@ -4,9 +4,12 @@ package main
 
 import (
 	"strings"
-	"unicode"
 )
 
+// Router is simplified for explicit mode routing.
+// In the new architecture, mode is explicit (:go or :sh), so we don't
+// need heuristics to guess whether input is Go or shell.
+// This router is used only in shell mode to distinguish builtins from commands.
 type Router struct {
 	builtins *BuiltinHandler
 	state    *ShellState
@@ -16,6 +19,7 @@ func NewRouter(builtins *BuiltinHandler, state *ShellState) *Router {
 	return &Router{builtins: builtins, state: state}
 }
 
+// Route for shell mode only - determines if input is a builtin or command
 func (r *Router) Route(input string) (InputType, string, []string) {
 	input = strings.TrimSpace(input)
 	if input == "" {
@@ -24,168 +28,13 @@ func (r *Router) Route(input string) (InputType, string, []string) {
 
 	command, args := r.parseInput(input)
 
-	if r.hasCommandSubstitution(input) {
-		return InputTypeGo, input, nil
-	}
-
-	// Only treat the first token as a builtin when the input does not look
-	// like Go code. This prevents builtins from shadowing valid Go forms
-	// such as variable declarations (e.g., "session := 1") or assignments.
-	if r.builtins.IsBuiltin(command) && !r.looksLikeGoCode(input) {
+	// Check for builtins first
+	if r.builtins.IsBuiltin(command) {
 		return InputTypeBuiltin, command, args
 	}
 
-	if r.looksLikeGoCode(input) {
-		return InputTypeGo, input, nil
-	}
-
-	if r.looksLikeShellCommand(input) {
-		return InputTypeCommand, command, args
-	}
-
-	return InputTypeGo, input, nil
-}
-
-func (r *Router) hasCommandSubstitution(input string) bool {
-	start := strings.Index(input, "$(")
-	if start == -1 {
-		return false
-	}
-
-	for i := start + 2; i < len(input); i++ {
-		if input[i] == '(' {
-			depth := 1
-			for j := i + 1; j < len(input) && depth > 0; j++ {
-				if input[j] == '(' {
-					depth++
-				} else if input[j] == ')' {
-					depth--
-				}
-			}
-			if depth > 0 {
-				return false // Unbalanced parentheses
-			}
-			i += depth * 2 // Skip past nested parentheses
-		} else if input[i] == ')' {
-			return true // Found matching closing parenthesis
-		}
-	}
-	return false // No matching closing parenthesis found
-}
-
-func (r *Router) looksLikeShellCommand(input string) bool {
-	input = strings.TrimSpace(input)
-
-	if input == "" {
-		return false
-	}
-
-	command, args := r.parseInput(input)
-
-	// Check for path-based executables (relative or absolute paths)
-	if strings.HasPrefix(command, "./") ||
-		strings.HasPrefix(command, "../") ||
-		strings.HasPrefix(command, "/") ||
-		strings.HasPrefix(command, "~/") {
-		return true // It's a path to an executable, treat as shell command
-	}
-
-	if _, found := FindInPath(command, r.state.Environment["PATH"]); found {
-		return true
-	}
-
-	// Has arguments/flags (dash or slash patterns)
-	if len(args) > 0 {
-		for _, arg := range args {
-			// Shell flags typically start with -
-			if strings.HasPrefix(arg, "-") {
-				return true
-			}
-			// Shell paths often contain /
-			if strings.Contains(arg, "/") {
-				return true
-			}
-		}
-	}
-
-	// Contains shell operators like pipes, redirects
-	if strings.ContainsAny(input, "|><") {
-		return true
-	}
-
-	// Go syntax patterns - if detected, definitely NOT a shell command
-	if strings.ContainsAny(input, "{}();:=") || strings.Contains(input, "\"") {
-		return false // These are Go patterns
-	}
-
-	// If it looks like a shell command but is NOT in PATH, let it fall back to Go
-	return false
-}
-
-// looksLikeGoCode checks if the input looks like Go code that should be evaluated
-func (r *Router) looksLikeGoCode(input string) bool {
-	input = strings.TrimSpace(input)
-	if input == "" {
-		return false
-	}
-
-	// Function definitions
-	if strings.HasPrefix(input, "func ") {
-		return true
-	}
-
-	// Go keywords that indicate Go code (excluding when used as shell commands)
-	goKeywords := []string{
-		"var ", "const ", "type ", "import ", "package ",
-		"if ", "else", "for ", "switch ", "select ", "case ", "default ",
-		"defer ", "return ", "break ", "continue ", "fallthrough ",
-		"struct ", "interface ", "map ", "chan ",
-		"go ", // for 'go func(){}', 'go fmt.Println()', etc.
-	}
-
-	for _, keyword := range goKeywords {
-		if strings.HasPrefix(input, keyword) {
-			// Special case: 'go' should only trigger if it's not the first word (not a command)
-			if keyword == "go " {
-				words := strings.Fields(input)
-				if len(words) > 0 && words[0] == "go" {
-					// 'go' is the first word, treat as shell command
-					continue
-				}
-			}
-			return true
-		}
-	}
-
-	// Type declarations with Go syntax
-	if strings.Contains(input, ":=") && !strings.Contains(input, "$(") {
-		return true
-	}
-
-	// Go-specific syntax patterns
-	if strings.ContainsAny(input, "{}()") &&
-		!strings.Contains(input, "|") &&
-		!strings.Contains(input, ">") &&
-		!strings.Contains(input, "<") {
-		// Contains Go braces/parentheses but not typical shell operators
-		return true
-	}
-
-	// Go types (common patterns)
-	goTypes := []string{
-		" string ", " int ", " bool ", " float64 ", " float32 ",
-		" byte ", " rune ", " error ", " interface{} ",
-		" int8 ", " int16 ", " int32 ", " int64 ",
-		" uint8 ", " uint16 ", " uint32 ", " uint64 ",
-	}
-
-	for _, goType := range goTypes {
-		if strings.Contains(input, goType) {
-			return true
-		}
-	}
-
-	return false
+	// Otherwise treat as shell command
+	return InputTypeCommand, command, args
 }
 
 func (r *Router) parseInput(input string) (string, []string) {
@@ -206,7 +55,7 @@ func (r *Router) parseInput(input string) (string, []string) {
 			} else {
 				current.WriteRune(char)
 			}
-		case unicode.IsSpace(char) && !inQuote:
+		case char == ' ' && !inQuote:
 			if current.Len() > 0 {
 				args = append(args, current.String())
 				current.Reset()

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/charmbracelet/bubbletea"
 )
 
 // debug flag is defined in debug.go; default is false
@@ -34,12 +36,12 @@ func main() {
 				os.Exit(1)
 			}
 			command := strings.Join(os.Args[2:], " ")
-			state := NewShellState()
+			session := NewSessionState()
 			evaluator := NewGoEvaluator()
-			spawner := NewProcessSpawner(state)
-			builtins := NewBuiltinHandler(state)
+			spawner := NewProcessSpawner(&ShellState{WorkingDirectory: session.WorkingDir})
+			builtins := NewBuiltinHandler(&ShellState{WorkingDirectory: session.WorkingDir})
 
-			evaluator.SetupWithShell(state, spawner)
+			evaluator.SetupWithShell(&ShellState{WorkingDirectory: session.WorkingDir}, spawner)
 			evaluator.SetupWithBuiltins(builtins)
 
 			// Load config before executing command
@@ -47,21 +49,33 @@ func main() {
 				fmt.Fprintf(os.Stderr, "Config loading error: %v\n", err)
 			}
 
-			// Use evaluator to execute the command
-			result := evaluator.Eval(command)
-			fmt.Print(result.Output)
-			os.Exit(result.ExitCode)
+			// Execute in shell mode by default
+			if strings.HasPrefix(command, "go> ") {
+				command = strings.TrimPrefix(command, "go> ")
+				result := evaluator.Eval(command)
+				fmt.Print(result.Output)
+				os.Exit(result.ExitCode)
+			} else {
+				// Use spawner for shell commands
+				parts := strings.Fields(command)
+				if len(parts) == 0 {
+					os.Exit(0)
+				}
+				result := spawner.ExecuteInteractive(parts[0], parts[1:])
+				fmt.Print(result.Output)
+				os.Exit(result.ExitCode)
+			}
 		}
 	}
 
-	state := NewShellState()
+	session := NewSessionState()
 	evaluator := NewGoEvaluator()
-	spawner := NewProcessSpawner(state)
-	builtins := NewBuiltinHandler(state)
+	spawner := NewProcessSpawner(&ShellState{WorkingDirectory: session.WorkingDir})
+	builtins := NewBuiltinHandler(&ShellState{WorkingDirectory: session.WorkingDir})
 	colors := GetColorManager()
 
 	// Setup evaluator with shell access
-	evaluator.SetupWithShell(state, spawner)
+	evaluator.SetupWithShell(&ShellState{WorkingDirectory: session.WorkingDir}, spawner)
 	evaluator.SetupWithBuiltins(builtins)
 
 	// Get actual build time from binary modification time
@@ -75,7 +89,7 @@ func main() {
 	} else {
 		fmt.Println(colors.StyleMessage("gosh "+GetVersion()+" - Go shell with yaegi", "welcome") + " (BUILT: Unknown)")
 	}
-	fmt.Println(colors.StyleMessage("Type 'exit' to quit, try some Go code or shell commands!", "welcome"))
+	fmt.Println(colors.StyleMessage("Type 'exit' to quit, :go for Go mode, :sh for shell mode", "welcome"))
 	fmt.Println()
 
 	// Load config.go if it exists
@@ -83,10 +97,12 @@ func main() {
 		fmt.Fprintf(os.Stderr, "%s\n", colors.StyleOutput(fmt.Sprintf("Config loading error: %v", err), "error"))
 	}
 
-	if err := RunREPL(state, evaluator, spawner, builtins); err != nil {
+	// Start Bubbletea REPL
+	p := tea.NewProgram(initialModel(session, evaluator, spawner, builtins), tea.WithAltScreen())
+	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", colors.StyleOutput(fmt.Sprintf("Error: %v", err), "error"))
 		os.Exit(1)
 	}
 
-	os.Exit(state.ExitCode)
+	os.Exit(0)
 }

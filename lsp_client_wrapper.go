@@ -235,15 +235,17 @@ func (l *LSPClientWrapper) GetCompletions(line string, pos int) ([]LSPCompletion
 	// Give gopls a moment to process
 	time.Sleep(50 * time.Millisecond)
 
-	// Calculate cursor position inside the session() function
-	// Count actual lines in session history (some entries may be multiline)
+// Calculate cursor position inside the session() function
+// Count actual lines in session history (some entries may be multiline)
 	historyLineCount := 0
 	for _, histLine := range l.sessionHistory {
 		historyLineCount += strings.Count(histLine, "\n") + 1
 	}
 
-	// Line count: package (0) + blank (1) + import (2) + blank (3) + history lines + blank + "func session() {" + current line
-	lineNumber := 4 + historyLineCount + 2 // +1 for the line with our completion request
+	// Line count: package (0) + blank (1) + import (2) + blank (3) + history lines + blank + "func session() {"
+	lineNumber := 4 + historyLineCount + 1 // +1 for the line with our completion request
+
+	debugf("🟡 [LSP] Calculating cursor position: lineNumber=%d, historyLineCount=%d, pos=%d\n", lineNumber, historyLineCount, pos)
 
 	cursorPos := Position{
 		Line:      lineNumber,
@@ -310,6 +312,9 @@ func (l *LSPClientWrapper) buildSessionContentWithCurrentLine(currentLine string
 	}
 
 	content += "}\n"
+
+	// Debug: Log the content to see what's being sent to gopls
+	debugf("🔵 [LSP] Virtual file content:\n%s\n", content)
 
 	return content
 }

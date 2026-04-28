@@ -20,7 +20,7 @@ func NewBuiltinHandler(state *ShellState) *BuiltinHandler {
 
 func (b *BuiltinHandler) IsBuiltin(command string) bool {
 	switch command {
-	case "cd", "exit", "help", "init", "session":
+	case "cd", "exit", "help", "init", "pwd", "session":
 		return true
 	default:
 		return false
@@ -37,6 +37,8 @@ func (b *BuiltinHandler) Execute(command string, args []string) ExecutionResult 
 		return b.help(args)
 	case "init":
 		return b.initConfig(args)
+	case "pwd":
+		return b.pwd(args)
 	case "session":
 		return b.session(args)
 	default:
@@ -510,6 +512,13 @@ func (b *BuiltinHandler) session(args []string) ExecutionResult {
 }
 
 // initConfig creates the .config/gosh directory with go.mod and template config.go
+func (b *BuiltinHandler) pwd(args []string) ExecutionResult {
+	return ExecutionResult{
+		Output: b.state.WorkingDirectory,
+		ExitCode: 0,
+	}
+}
+
 func (b *BuiltinHandler) initConfig(args []string) ExecutionResult {
 	homeDir := os.Getenv("HOME")
 	if homeDir == "" {
