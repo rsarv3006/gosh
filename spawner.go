@@ -259,8 +259,8 @@ func containsEnv(env []string, key string) bool {
 
 func wantsColorForCommand(command string, args []string) bool {
 	coloredCommands := map[string]bool{
-		"ls":     true,
 		"grep":   true,
+		"diff":   true,
 		"git":    true,
 		"docker": true,
 		"npm":    true,
@@ -275,6 +275,11 @@ func wantsColorForCommand(command string, args []string) bool {
 		"rg":     true,
 		"fd":     true,
 		"tree":   true,
+	}
+
+	// Don't auto-color ls - let the terminal handle it
+	if command == "ls" {
+		return false
 	}
 
 	if coloredCommands[command] {
@@ -294,7 +299,7 @@ func wantsColorForCommand(command string, args []string) bool {
 		return gitColoredSubcommands[args[0]]
 	}
 
-	if command == "grep" || command == "rg" || command == "ls" {
+	if command == "grep" || command == "rg" {
 		return true
 	}
 
