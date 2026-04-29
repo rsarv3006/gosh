@@ -190,11 +190,7 @@ func (m model) executeBlock(input string) string {
 
 	// Return output with separator if needed
 	if result.Output != "" {
-		width := m.width
-		if width == 0 {
-			width = 80
-		}
-		separator := strings.Repeat("─", width)
+		separator := strings.Repeat("─", m.width)
 		return fmt.Sprintf("%s\n%s\n%s\n", separator, result.Output, separator)
 	}
 
@@ -207,19 +203,6 @@ func (m model) View() string {
 	}
 
 	var sb strings.Builder
-
-	// Show full history
-	for _, block := range m.session.History {
-		if block.Output != "" {
-			width := m.width
-			if width == 0 {
-				width = 80
-			}
-			separator := strings.Repeat("─", width)
-			sb.WriteString(fmt.Sprintf("%s\n%s\n%s\n", separator, block.Output, separator))
-		}
-	}
-
 
 	if m.output != "" {
 		sb.WriteString(m.output)
