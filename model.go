@@ -8,11 +8,13 @@ import (
 
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
 )
 
 type model struct {
 	textarea   textarea.Model
+	viewport   viewport.Model
 	session    *SessionState
 	evaluator  *GoEvaluator
 	spawner    *ProcessSpawner
@@ -24,7 +26,7 @@ type model struct {
 	historyIdx int
 }
 
-func initialModel(session *SessionState, evaluator *GoEvaluator, spawner *ProcessSpawner, builtins *BuiltinHandler) model {
+func initialModel(session *SessionState, evaluator *GoEvaluator, spawner *ProcessSpawner, builtins *BuiltinHandler) *model {
 	ta := textarea.New()
 	ta.Placeholder = ""
 	ta.Focus()
@@ -35,8 +37,11 @@ func initialModel(session *SessionState, evaluator *GoEvaluator, spawner *Proces
 
 	ta.KeyMap.InsertNewline.SetEnabled(false)
 
-	return model{
+	vp := viewport.New(80, 20)
+
+	return &model{
 		textarea:   ta,
+		viewport:   vp,
 		session:    session,
 		evaluator:  evaluator,
 		spawner:    spawner,
@@ -53,12 +58,14 @@ func (m model) Init() tea.Cmd {
 	return textarea.Blink
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 		m.textarea.SetWidth(msg.Width)
+		m.viewport.Width = msg.Width
+		m.viewport.Height = msg.Height - 3
 		return m, nil
 
 	case tea.KeyMsg:
@@ -71,6 +78,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleEnter()
 		case tea.KeyUp, tea.KeyDown:
 			return m.handleHistory(msg.Type)
+		case tea.KeyPgUp:
+			m.viewport.LineUp(10)
+			return m, nil
+		case tea.KeyPgDown:
+			m.viewport.LineDown(10)
+			return m, nil
 		}
 	}
 
@@ -80,7 +93,27 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m model) handleEnter() (tea.Model, tea.Cmd) {
+// updateViewportContent rebuilds the viewport content from history
+func (m *model) updateViewportContent() {
+	var content strings.Builder
+
+	for _, block := range m.session.History {
+		if block.Output != "" {
+			content.WriteString(block.Output)
+			if !strings.HasSuffix(block.Output, "\n") {
+				content.WriteString("\n")
+			}
+		}
+	}
+
+	if m.output != "" {
+		content.WriteString(m.output)
+	}
+
+	m.viewport.SetContent(content.String())
+}
+
+func (m *model) handleEnter() (tea.Model, tea.Cmd) {
 	input := m.textarea.Value()
 	if input == "" {
 		return m, nil
@@ -116,7 +149,7 @@ func (m model) handleEnter() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) handleHistory(keyType tea.KeyType) (tea.Model, tea.Cmd) {
+func (m *model) handleHistory(keyType tea.KeyType) (tea.Model, tea.Cmd) {
 	if len(m.session.History) == 0 {
 		return m, nil
 	}
@@ -140,7 +173,7 @@ func (m model) handleHistory(keyType tea.KeyType) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) executeBlock(input string) string {
+func (m *model) executeBlock(input string) string {
 	var result ExecutionResult
 	var capturedVar string
 
@@ -187,6 +220,7 @@ func (m model) executeBlock(input string) string {
 		Capture: capturedVar,
 	}
 	m.session.AddHistory(block)
+	m.updateViewportContent()
 
 	// Return output with separator if needed
 	if result.Output != "" {
@@ -197,23 +231,12 @@ func (m model) executeBlock(input string) string {
 	return ""
 }
 
-func (m model) View() string {
+func (m *model) View() string {
 	if m.quitting {
 		return "Goodbye!\n"
 	}
 
-	var sb strings.Builder
-
-	if m.output != "" {
-		sb.WriteString(m.output)
-		if !strings.HasSuffix(m.output, "\n") {
-			sb.WriteString("\n")
-		}
-	}
-
-	sb.WriteString(m.textarea.View())
-
-	return sb.String()
+	return m.viewport.View() + "\n" + m.textarea.View()
 }
 
 var (
