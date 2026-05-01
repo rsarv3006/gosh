@@ -81,6 +81,13 @@ func (s *SessionState) GetPrompt() string {
 	return "$ "
 }
 
+func (s *SessionState) GetPromptForMode(mode BlockMode) string {
+	if mode == ModeGo {
+		return "go> "
+	}
+	return "$ "
+}
+
 func (s *SessionState) GetContinuationPrompt() string {
 	return "... "
 }

@@ -76,7 +76,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Config loading error: %v\n", err)
 	}
 
-	p := tea.NewProgram(initialModel(session, evaluator, spawner, builtins))
+	p := tea.NewProgram(initialModel(session, evaluator, spawner, builtins), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)

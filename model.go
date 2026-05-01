@@ -98,9 +98,14 @@ func (m *model) updateViewportContent() {
 	var content strings.Builder
 
 	for _, block := range m.session.History {
+		if block.Input != "" {
+			content.WriteString(m.session.GetPromptForMode(block.Mode) + block.Input + "\n")
+		}
 		if block.Output != "" {
-			separator := strings.Repeat("─", m.width)
-			content.WriteString(fmt.Sprintf("%s\n%s\n%s\n", separator, block.Output, separator))
+			content.WriteString(block.Output)
+			if !strings.HasSuffix(block.Output, "\n") {
+				content.WriteString("\n")
+			}
 		}
 	}
 
