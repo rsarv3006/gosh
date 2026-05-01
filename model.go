@@ -99,18 +99,13 @@ func (m *model) updateViewportContent() {
 
 	for _, block := range m.session.History {
 		if block.Output != "" {
-			content.WriteString(block.Output)
-			if !strings.HasSuffix(block.Output, "\n") {
-				content.WriteString("\n")
-			}
+			separator := strings.Repeat("─", m.width)
+			content.WriteString(fmt.Sprintf("%s\n%s\n%s\n", separator, block.Output, separator))
 		}
 	}
 
-	if m.output != "" {
-		content.WriteString(m.output)
-	}
-
 	m.viewport.SetContent(content.String())
+	m.viewport.GotoBottom()
 }
 
 func (m *model) handleEnter() (tea.Model, tea.Cmd) {
@@ -221,12 +216,6 @@ func (m *model) executeBlock(input string) string {
 	}
 	m.session.AddHistory(block)
 	m.updateViewportContent()
-
-	// Return output with separator if needed
-	if result.Output != "" {
-		separator := strings.Repeat("─", m.width)
-		return fmt.Sprintf("%s\n%s\n%s\n", separator, result.Output, separator)
-	}
 
 	return ""
 }
