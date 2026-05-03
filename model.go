@@ -61,6 +61,10 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Always pass messages to viewport first for mouse scrolling
+	var vpCmd tea.Cmd
+	m.viewport, vpCmd = m.viewport.Update(msg)
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -74,7 +78,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.Height = 20
 		}
 		m.updateViewportContent()
-		return m, nil
+		return m, vpCmd
 
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -98,10 +102,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.textarea, cmd = m.textarea.Update(msg)
 	m.textarea.Prompt = m.session.GetPrompt()
-
-	// Pass all messages to viewport so it can handle mouse scrolling
-	var vpCmd tea.Cmd
-	m.viewport, vpCmd = m.viewport.Update(msg)
 
 	return m, tea.Batch(cmd, vpCmd)
 }
