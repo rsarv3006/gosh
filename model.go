@@ -70,7 +70,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.textarea.SetWidth(msg.Width)
-		// Don't manually set viewport dimensions - let viewport.Update() handle it
+		// Set viewport to use available space (full height minus textarea)
+		m.viewport.Width = msg.Width
+		m.viewport.Height = msg.Height - 3
 		m.updateViewportContent()
 		return m, vpCmd
 
@@ -117,8 +119,7 @@ func (m *model) updateViewportContent() {
 	}
 
 	m.viewport.SetContent(content.String())
-	// Debug: print to stderr to verify content is being set
-	// fmt.Fprintf(os.Stderr, "Viewport: content_len=%d, height=%d, lines=%d\n", len(content.String()), m.viewport.Height, strings.Count(content.String(), "\n"))
+	m.viewport.GotoBottom()
 }
 
 func (m *model) handleEnter() (tea.Model, tea.Cmd) {
