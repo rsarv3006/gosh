@@ -61,7 +61,7 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// Always pass messages to viewport first for mouse scrolling
+	// Pass ALL messages to viewport first
 	var vpCmd tea.Cmd
 	m.viewport, vpCmd = m.viewport.Update(msg)
 
@@ -70,13 +70,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.textarea.SetWidth(msg.Width)
-		m.viewport.Width = msg.Width
-		// Ensure viewport has reasonable height
-		if msg.Height > 5 {
-			m.viewport.Height = msg.Height - 3
-		} else {
-			m.viewport.Height = 20
-		}
+		// Don't manually set viewport dimensions - let viewport.Update() handle it
 		m.updateViewportContent()
 		return m, vpCmd
 
