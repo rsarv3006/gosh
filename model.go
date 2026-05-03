@@ -65,7 +65,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.textarea.SetWidth(msg.Width)
 		m.viewport.Width = msg.Width
-		m.viewport.Height = msg.Height - 3
+		// Ensure viewport has at least 10 lines height
+		if msg.Height > 5 {
+			m.viewport.Height = msg.Height - 3
+		} else {
+			m.viewport.Height = 10
+		}
+		// Rebuild viewport content with new width
+		m.updateViewportContent()
 		return m, nil
 
 	case tea.KeyMsg:
