@@ -38,6 +38,8 @@ func initialModel(session *SessionState, evaluator *GoEvaluator, spawner *Proces
 	ta.KeyMap.InsertNewline.SetEnabled(false)
 
 	vp := viewport.New(80, 20)
+	// Set initial empty content
+	vp.SetContent("")
 
 	return &model{
 		textarea:   ta,
@@ -65,13 +67,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.textarea.SetWidth(msg.Width)
 		m.viewport.Width = msg.Width
-		// Ensure viewport has at least 10 lines height
+		// Ensure viewport has reasonable height
 		if msg.Height > 5 {
 			m.viewport.Height = msg.Height - 3
 		} else {
-			m.viewport.Height = 10
+			m.viewport.Height = 20
 		}
-		// Rebuild viewport content with new width
 		m.updateViewportContent()
 		return m, nil
 
@@ -98,12 +99,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.textarea, cmd = m.textarea.Update(msg)
 	m.textarea.Prompt = m.session.GetPrompt()
 
-	// Pass mouse events to viewport for scrolling
-	if _, ok := msg.(tea.MouseMsg); ok {
-		m.viewport, _ = m.viewport.Update(msg)
-	}
+	// Pass all messages to viewport so it can handle mouse scrolling
+	var vpCmd tea.Cmd
+	m.viewport, vpCmd = m.viewport.Update(msg)
 
-	return m, cmd
+	return m, tea.Batch(cmd, vpCmd)
 }
 
 // updateViewportContent rebuilds the viewport content from history
@@ -123,6 +123,8 @@ func (m *model) updateViewportContent() {
 	}
 
 	m.viewport.SetContent(content.String())
+	// Debug: print to stderr to verify content is being set
+	// fmt.Fprintf(os.Stderr, "Viewport: content_len=%d, height=%d, lines=%d\n", len(content.String()), m.viewport.Height, strings.Count(content.String(), "\n"))
 }
 
 func (m *model) handleEnter() (tea.Model, tea.Cmd) {
