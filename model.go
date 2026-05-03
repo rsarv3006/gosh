@@ -90,6 +90,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.textarea, cmd = m.textarea.Update(msg)
 	m.textarea.Prompt = m.session.GetPrompt()
+
+	// Pass mouse events to viewport for scrolling
+	if _, ok := msg.(tea.MouseMsg); ok {
+		m.viewport, _ = m.viewport.Update(msg)
+	}
+
 	return m, cmd
 }
 
@@ -110,7 +116,6 @@ func (m *model) updateViewportContent() {
 	}
 
 	m.viewport.SetContent(content.String())
-	m.viewport.GotoBottom()
 }
 
 func (m *model) handleEnter() (tea.Model, tea.Cmd) {
